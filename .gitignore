@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+test-bsgs
+BesiegeCreationImportAddon
+*.blend
+*.blend1
+dev-log.md
+
 # Distribution / packaging
 .Python
 build/
