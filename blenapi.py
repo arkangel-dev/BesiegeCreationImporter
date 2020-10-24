@@ -4,7 +4,7 @@ import numpy as np
 import math
 import json
 import xml.etree.ElementTree as ET
-
+import random
 from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
@@ -64,15 +64,15 @@ class BlenderAPI():
 
 	def BlockDrawTypeLineType(self, block, component, vanilla_skins=False):
 
-		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\BesiegeCreationImporter\\modules\\CustomBlocks\\Connector\\connector.obj")
+		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\Connector\\connector.obj")
 		connector = bpy.context.selected_objects[0]
 		connector.location= Vector((0,0,0))
 
 		# bpy.ops.mesh.primitive_cube_add(scale=(0.45, 0.45, 0.45), location=(0,0,0))
-		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\BesiegeCreationImporter\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
+		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
 		start = bpy.context.selected_objects[0]
 		# bpy.ops.mesh.primitive_cube_add(scale=(0.45, 0.45, 0.45), location=(0,0,0))
-		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\BesiegeCreationImporter\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
+		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
 		end = bpy.context.selected_objects[0]
 
 		parent = bpy.data.objects.new( "empty", None)
@@ -88,12 +88,15 @@ class BlenderAPI():
 
 		parent.location = Vector((block.getVectorPosition()))
 		parent.scale = block.getScale()
-		parent.rotation_mode = 'QUATERNION'
+		
 
 		start.location = Vector(block.GetLineStartPosition())
 		end.location = Vector(block.GetLineEndPosition())
 		connector.location = Vector(block.GetLineStartPosition())
-		start.rotation_euler = Euler(block.GetLineStartRotation())
+		# start.rotation_euler = Euler(block.GetLineStartRotation())
+
+
+		end.rotation_mode = 'XYZ'
 		end.rotation_euler = Euler(block.GetLineEndRotation())
 
 		# start.select_set(True)
@@ -103,6 +106,7 @@ class BlenderAPI():
 
 		qtrans = Quaternion(block.getQuarternion())
 		qtrans.invert()
+		parent.rotation_mode = 'QUATERNION'
 		parent.rotation_quaternion = qtrans
 		parent.rotation_mode = 'XYZ'
 
@@ -113,10 +117,24 @@ class BlenderAPI():
 		distance = self.GetDistance([start, end])
 		connector.dimensions[1] = distance
 
+
+
+		hash_key = str(hash(random.randint(1000, 9999)))
+
+		parent.name = "Parent_" + hash_key
+		start.name = "StartPoint_" + hash_key
+		end.name = "EndPoint_" + hash_key
+		connector.name = "Connector_" + hash_key
+
+		bpy.ops.object.select_all(action='DESELECT')
+		end.select_set(True)
+		# end.clrParent(mode=2)
+		bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+		end.rotation_mode = 'XYZ'
+		end.rotation_euler = Euler(block.GetLineEndRotation())
 		if distance < 0.15:
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
-
 		return ""
 
 	def GetDistance(self, objs):
@@ -128,6 +146,7 @@ class BlenderAPI():
 		return distance
 
 	def BlockDrawTypeDefault(self, block, component, vanilla_skins=False):
+		hash_key = str(hash(random.randint(1000, 9999)))
 		bpy.ops.object.select_all(action='DESELECT')
 		model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not vanilla_skins else self.FetchModel(component.base_source, 'Template', 'Template')
 		bpy.ops.import_scene.obj(filepath=model[0])
@@ -167,6 +186,7 @@ class BlenderAPI():
 		current_obj.rotation_mode = 'XYZ'
 		# translate according to the BSG file
 		current_obj.location = Vector(block.getVectorPosition())
+		current_obj.name = component.base_source + "_" + hash_key
 		return current_obj
 
 	def CreateParent(self, obj_list):
@@ -190,7 +210,7 @@ class BlenderAPI():
 			os.path.join(self.workshop_store, skin_id, dlist[0], block_name),
 			os.path.join(self.game_store, skin_name, block_name),
 			os.path.join(self.backup_store, block_name),
-			os.path.join("D:\\GitHub\\BesiegeCreationImporter\\modules\\CustomBlocks", block_name)
+			os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name)
 		]
 
 		for cdir in model_dirs:

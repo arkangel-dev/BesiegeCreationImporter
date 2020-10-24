@@ -82,12 +82,8 @@ class Reader():
 					if key.get('key').__eq__('start-rotation'): sr = [key.find('X').text, key.find('Y').text, key.find('Z').text]
 					if key.get('key').__eq__('end-rotation'): er = [key.find('X').text, key.find('Y').text, key.find('Z').text]
 
-
-				print("{} - {} - {} - {}".format(sp, ep, sr, er))
 				current_block.SetLineTypeGeometry(sp, ep, sr, er)
-				
-
-			
+							
 			current_block.guid = block.get('guid')
 			current_block.block_id = block_id
 			current_block.code_name = self.atlas[block_id]['code_name']

@@ -61,7 +61,7 @@ class Block():
 		return (self.Convert(self._srx), self.Convert(self._srz), self.Convert(self._sry))
 
 	def GetLineEndRotation(self):
-		return (self.Convert(self._ery * -1), self.Convert(self._erz * -1), self.Convert(self._erx * -1))
+		return (self.Convert(self._erx), self.Convert(self._erz), self.Convert(self._ery))
 
 
 	def Convert(self, val):
