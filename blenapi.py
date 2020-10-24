@@ -93,7 +93,7 @@ class BlenderAPI():
 		start.location = Vector(block.GetLineStartPosition())
 		end.location = Vector(block.GetLineEndPosition())
 		connector.location = Vector(block.GetLineStartPosition())
-		# start.rotation_euler = Euler(block.GetLineStartRotation())
+		start.rotation_euler = Euler(block.GetLineStartRotation())
 
 
 		end.rotation_mode = 'XYZ'

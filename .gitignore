@@ -11,6 +11,7 @@ BesiegeCreationImportAddon
 *.blend
 *.blend1
 dev-log.md
+adddon.py
 
 # Distribution / packaging
 .Python
