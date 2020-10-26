@@ -29,6 +29,7 @@ class DefaultMaterial():
 			if self.material_name.__eq__(m.name):
 				self.material = m
 		self.Generate()
+		
 
 		
 	def Generate(self):

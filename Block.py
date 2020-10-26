@@ -63,6 +63,6 @@ class Block():
 	def GetLineEndRotation(self):
 		return (self.Convert(self._erx), self.Convert(self._erz), self.Convert(self._ery))
 
-
 	def Convert(self, val):
-		return val * pi / 180
+		# return (val * pi / 180) 
+		return radians(val)
