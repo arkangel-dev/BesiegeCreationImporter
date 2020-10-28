@@ -35,12 +35,10 @@ class BlenderAPI():
 	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
-
 		Parameters
 			path : string : Path to the bsg file
 			vanilla_skins : bool : Use vanilla skins instead of the skins defined in the bsg file
 			create_parent : Parent all imported objects to an empty after importing them
-
 		Return : None
 		Exceptions : None
 		'''
@@ -65,10 +63,12 @@ class BlenderAPI():
 
 		for block in normal_draw:
 			for component in block.components:
+				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		for block in line_draw:
 			for component in block.components:
+				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))		
 		
 
@@ -76,12 +76,10 @@ class BlenderAPI():
 		'''
 		This is the draw type intended for line type blocks. These blocks have a position, scale, rotation, start position,
 		end position, start rotation and end rotation. These values are used to draw a block that connects 2 points.
-
 		Parameters
 			block : Block : Block to import
 			component : Component : Component to import
 			vanilla_skins : Bool : Import vanilla skins
-
 		Returns : Object
 		Exceptions : None
 		'''
@@ -103,37 +101,43 @@ class BlenderAPI():
 		parent.empty_display_size = 0.25
 		parent.empty_display_type = 'CUBE'
 
-
 		start.location = Vector(block.GetLineStartPosition())
 		end.location = Vector(block.GetLineEndPosition())
 		connector.location = Vector(block.GetLineStartPosition())
-		start.rotation_euler = Euler(block.GetLineStartRotation())
-
-
-		end.rotation_mode = 'XYZ'
-		end.rotation_euler = Euler(block.GetLineEndRotation())
-
-		# start.select_set(True)
-		# end.select_set(True)
-		# bpy.ops.object.select_all(action='DESELECT')
-		# bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+		# start.rotation_euler = Euler(block.GetLineStartRotation())
+		# end.rotation_euler = Euler(block.GetLineEndRotation())
 
 		start.parent = parent
 		end.parent = parent
 		connector.parent = parent
 
 		parent.location = Vector((block.getVectorPosition()))
-		parent.scale = block.getScale()
 		parent.rotation_mode = 'QUATERNION'
 		parent.rotation_quaternion = Quaternion(block.getQuarternion()).inverted()
 		parent.rotation_mode = 'XYZ'
 
-		constraint = connector.constraints.new('TRACK_TO')
-		constraint.track_axis = "TRACK_Y"
-		constraint.up_axis = "UP_X"
-		constraint.target = end
-		distance = self.GetDistance([start, end])
-		connector.dimensions[1] = distance
+
+
+		# start.parent = None
+		# start.location = parent.location
+		
+
+
+
+
+
+
+
+		# start.select_set(True)
+		# end.select_set(True)
+		# bpy.ops.object.select_all(action='DESELECT')
+		# bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+
+
+
+
+
+
 
 		hash_key = str(hash(random.randint(1000, 9999)))
 
@@ -143,24 +147,79 @@ class BlenderAPI():
 		connector.name = "Connector_" + hash_key
 
 		bpy.ops.object.select_all(action='DESELECT')
-		end.select_set(True)
+
+
+		start_og_location = start.matrix_world.to_translation()		
+		start.parent = parent
+		start.location = start_og_location
+		start.matrix_parent_inverse = parent.matrix_world.inverted()
+
+
+		end_og_location = end.matrix_world.to_translation()		
+		end.parent = parent
+		end.location = end_og_location
+		end.matrix_parent_inverse = parent.matrix_world.inverted()
+
+		start.rotation_euler.x -= block.GetLineStartRotation()[0]
+		start.rotation_euler.y -= block.GetLineStartRotation()[1]
+		start.rotation_euler.z -= block.GetLineStartRotation()[2]
+
+		# start.rotation_euler.rotate_axis('X', block.GetLineStartRotation()[0])
+		# start.rotation_euler.rotate_axis('Y', block.GetLineStartRotation()[1])
+		# start.rotation_euler.rotate_axis('Z', block.GetLineStartRotation()[2])
+
+		# end.rotation_euler.rotate_axis('X', block.GetLineEndRotation()[0])
+		# end.rotation_euler.rotate_axis('Y', block.GetLineEndRotation()[1])
+		# end.rotation_euler.rotate_axis('Z', block.GetLineEndRotation()[2])
+
+		end.rotation_euler.x -= block.GetLineEndRotation()[0]
+		end.rotation_euler.y -= block.GetLineEndRotation()[1]
+		end.rotation_euler.z -= block.GetLineEndRotation()[2]
+
+		end.rotation_mode = 'XZY'
+		end.rotation_mode = 'XZY'
+		
+
+
+
+		parent.scale = block.getScale()
+
+		# end.select_set(True)
 		# end.clrParent(mode=2)
-		bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
-		end.rotation_mode = 'XYZ'
-		end.rotation_euler = Euler(block.GetLineEndRotation())
+		# bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+
+
+		constraint = connector.constraints.new('TRACK_TO')
+		constraint.track_axis = "TRACK_Y"
+		constraint.up_axis = "UP_X"
+		constraint.target = end
+		distance = self.GetDistance([start, end])
+		connector.dimensions[1] = distance
+
 		# TODO Calibrate distance threshold to delete connector block and end block
-		# if distance < 0.15:
-		# 	bpy.data.objects.remove(connector)
-		# 	bpy.data.objects.remove(end)
+		if distance < 0.15:
+			bpy.data.objects.remove(connector)
+			bpy.data.objects.remove(end)
+		
 		return ""
+
+	def RotateGlobal(self, obj, radian, axis):
+		rot_mat = Matrix.Rotation(radian, 4, axis)   # you can also use as axis Y,Z or a custom vector like (x,y,z)
+
+		# decompose world_matrix's components, and from them assemble 4x4 matrices
+		orig_loc, orig_rot, orig_scale = obj.matrix_world.decompose()
+		orig_loc_mat = Matrix.Translation(orig_loc)
+		orig_rot_mat = orig_rot.to_matrix().to_4x4()
+		orig_scale_mat = Matrix.Scale(orig_scale[0],4,(1,0,0)) * Matrix.Scale(orig_scale[1],4,(0,1,0)) * Matrix.Scale(orig_scale[2],4,(0,0,1))
+
+		# assemble the new matrix
+		obj.matrix_world = orig_loc_mat * rot_mat * orig_rot_mat * orig_scale_mat 
 
 	def GetDistance(self, objs:list) -> float:
 		'''
 		Get the distance between 2 objects
-		
 		Parameters
 			objs : list : List of objects
-
 		Return : float
 		Exceptions : None
 		'''
@@ -174,17 +233,16 @@ class BlenderAPI():
 		'''
 		Import a block with the draw type, default. Default blocks are simply, imported and oriented correctly.
 		It is the simplest type of object to draw. In addition to importing it, the materials are also generated
-		
 		Parameters
 			block : Block : Block class to import
 			component : Component : Component to import
 			vanilla_skins : Bool : Use vanilla skins
-
 		Return : Object
 		Exceptions : None
 		'''
 		# TODO Refactor `blenapi.BlockDrawTypeDefault()`
 		# TODO Do something to avoid importing every single from block from disk
+		# TODO Fix material naming issues
 		# This can be done by importing a block, and then instead of importing it again from
 		# disk, the same block can be duplicated again. This will give a HUGE performance boost
 		bpy.ops.object.select_all(action='DESELECT')
@@ -202,12 +260,20 @@ class BlenderAPI():
 		if (block.block_id in ['26','55']):
 			component._offset_rotation_y += 23 if block.flipped != 'True' else -23
 		# Rotate according to the offset data from the JSON file
-		bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_x), orient_axis='X', orient_type='LOCAL', orient_matrix_type='LOCAL')
-		bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_y), orient_axis='Y', orient_type='LOCAL', orient_matrix_type='LOCAL')
-		bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_z), orient_axis='Z', orient_type='LOCAL', orient_matrix_type='LOCAL')
+		
+		# bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_x), orient_axis='X')
+		# bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_y), orient_axis='Y')
+		# bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_z), orient_axis='Z')
+
+
+		current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
+		current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
+		current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
+
 		# Translate according to the offset data from the JSON file
 		current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
 		bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+		# current_obj.matrix_world = Matrix()
 		# Set the scale according to the BSG file.
 		current_obj.scale = block.getScale()
 		# Set the rotation according to the BSG file. Note that this is described in the BSG file in Quarternions
@@ -224,10 +290,8 @@ class BlenderAPI():
 	def CreateParent(self, obj_list:list) -> None:
 		'''
 		Parent all objects imported to a single empty
-
 		Parameters
 			obj_list : list : List of objects to parent
-
 		Return : None
 		Exceptions : None
 		'''
@@ -241,12 +305,10 @@ class BlenderAPI():
 	def FetchModel(self, block_name:str, skin_id:str, skin_name='Template') -> None:
 		'''
 		Finds the absolute path to the image and model of the skin needed.
-
 		Parameters
 			block_name : string : Name of the block to import (the name used in code)
 			skin_id : string : Steam workshop ID
 			skin_name : string : Name of the skin
-
 		Return : Tuple or String
 		Exceptions : None
 		'''
@@ -276,11 +338,9 @@ class BlenderAPI():
 	def AttemptLoad(self, directory:str, extension:str) -> bool:
 		'''
 		Try to see if a file with a certain extenson exists in the folder
-
 		Parameters
 			directory : string : The directory to search for
 			extension : string : Extension to look for
-
 		Return : Boolean
 		Exceptions : None
 		'''
@@ -302,7 +362,6 @@ class BlenderAPI():
 			block : Block : The block class for which the material should be generated
 			texture_path : String : The path to the object texture. ie a PNG for something
 			skin_name : String : The name of the skin used
-
 		Return : Material
 		Exceptions : None
 		'''
