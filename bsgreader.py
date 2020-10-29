@@ -46,7 +46,6 @@ class Reader():
 
 			total_blocks += 1
 
-
 			trans_p_x = float(block.find("Transform/Position").get('x'))
 			trans_p_y = float(block.find("Transform/Position").get('y'))
 			trans_p_z = float(block.find("Transform/Position").get('z'))
@@ -60,9 +59,6 @@ class Reader():
 			trans_s_y = float(block.find("Transform/Scale").get('y'))
 			trans_s_z = float(block.find("Transform/Scale").get('z'))
 
-
-
-
 			current_block = Block(
 				[trans_p_x, trans_p_y, trans_p_z],
 				[trans_r_x, trans_r_y, trans_r_z, trans_r_w],
@@ -74,7 +70,6 @@ class Reader():
 					if key.get('key').__eq__('flipped'):
 						current_block.flipped = key.text
 
-			
 			if (block_id in ['7']):
 				for key in block.find("Data").getchildren():
 					if key.get('key').__eq__('start-position'): sp = [key.find('X').text, key.find('Y').text, key.find('Z').text]
@@ -97,15 +92,12 @@ class Reader():
 				o_s_x = component['offset']['scale']['x']
 				o_s_y = component['offset']['scale']['z']
 				o_s_z = component['offset']['scale']['y']
-				
-
 
 				current_comp_inst = Component(
 					[o_p_x, o_p_y, o_p_z],
 					[o_r_x, o_r_y, o_r_z],
 					[o_s_x, o_s_y, o_s_z]
 				)
-
 
 				try:
 					current_comp_inst.skin_id = block.find('Settings/Skin').get('id')
@@ -118,11 +110,9 @@ class Reader():
 					current_comp_inst.skin_id = 'Template'
 					current_comp_inst.skin_name = 'Template'
 
-
 				current_comp_inst.base_source = component['base_source']
 				current_comp_inst.group = component['group']
 				current_comp_inst.line_type_block = component['line_type_blocks']
-
 				current_block.components.append(deepcopy(current_comp_inst))
 			
 			returnList.append(current_block)

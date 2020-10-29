@@ -63,12 +63,12 @@ class BlenderAPI():
 
 		for block in normal_draw:
 			for component in block.components:
-				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+				bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		for block in line_draw:
 			for component in block.components:
-				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+				bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))		
 		
 
@@ -83,23 +83,33 @@ class BlenderAPI():
 		Returns : Object
 		Exceptions : None
 		'''
+
+		texture = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
+	
+		material = self.GenerateMaterial(component, texture, component.skin_name)
+
+
 		# TODO Remove hard coded file paths
 		# TODO Fix warped brace cube issues
 		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\Connector\\connector.obj")
 		connector = list(bpy.context.selected_objects)[0]
 		connector.location= Vector((0,0,0))
+		connector.active_material = material
 
-		# bpy.ops.mesh.primitive_cube_add(scale=(0.45, 0.45, 0.45), location=(0,0,0))
 		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
 		start = list(bpy.context.selected_objects)[0]
-		# bpy.ops.mesh.primitive_cube_add(scale=(0.45, 0.45, 0.45), location=(0,0,0))
+		start.active_material = material
+
 		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
 		end = list(bpy.context.selected_objects)[0]
+		end.active_material = material
 
 		parent = bpy.data.objects.new( "empty", None)
-		bpy.context.scene.collection.objects.link(parent)
+		# bpy.context.scene.collection.objects.link(parent)
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(parent)
 		parent.empty_display_size = 0.25
 		parent.empty_display_type = 'CUBE'
+
 
 		start.location = Vector(block.GetLineStartPosition())
 		end.location = Vector(block.GetLineEndPosition())
@@ -116,49 +126,30 @@ class BlenderAPI():
 		parent.rotation_quaternion = Quaternion(block.getQuarternion()).inverted()
 		parent.rotation_mode = 'XYZ'
 
-
-
 		# start.parent = None
 		# start.location = parent.location
 		
-
-
-
-
-
-
-
 		# start.select_set(True)
 		# end.select_set(True)
 		# bpy.ops.object.select_all(action='DESELECT')
 		# bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
-
-
-
-
-
-
-		hash_key = str(hash(random.randint(1000, 9999)))
-
-		parent.name = "Parent_" + hash_key
-		start.name = "StartPoint_" + hash_key
-		end.name = "EndPoint_" + hash_key
-		connector.name = "Connector_" + hash_key
+		parent.name = "Brace_" + block.guid
+		start.name = "StartPoint_" + block.guid
+		end.name = "EndPoint_" + block.guid
+		connector.name = "Connector_" + block.guid
 
 		bpy.ops.object.select_all(action='DESELECT')
 
+		# start_og_location = start.matrix_world.to_translation()		
+		# start.parent = parent
+		# start.location = start_og_location
+		# start.matrix_parent_inverse = parent.matrix_world.inverted()
 
-		start_og_location = start.matrix_world.to_translation()		
-		start.parent = parent
-		start.location = start_og_location
-		start.matrix_parent_inverse = parent.matrix_world.inverted()
-
-
-		end_og_location = end.matrix_world.to_translation()		
-		end.parent = parent
-		end.location = end_og_location
-		end.matrix_parent_inverse = parent.matrix_world.inverted()
+		# end_og_location = end.matrix_world.to_translation()		
+		# end.parent = parent
+		# end.location = end_og_location
+		# end.matrix_parent_inverse = parent.matrix_world.inverted()
 
 		start.rotation_euler.x -= block.GetLineStartRotation()[0]
 		start.rotation_euler.y -= block.GetLineStartRotation()[1]
@@ -176,18 +167,30 @@ class BlenderAPI():
 		end.rotation_euler.y -= block.GetLineEndRotation()[1]
 		end.rotation_euler.z -= block.GetLineEndRotation()[2]
 
-		end.rotation_mode = 'XZY'
-		end.rotation_mode = 'XZY'
+
+		# start.rotation_euler.x += math.radians(90)
+		# start.rotation_euler.y += math.radians(90)
+
+
+		# e_quart = end.rotation_quaternion
+		# e_quart.invert()
+		# end.rotation_mode = 'QUATERNION'
+		# end.rotation_quaternion = e_quart
+
+		# s_quart = start.rotation_quaternion
+		# s_quart.invert()
+		# start.rotation_mode = 'QUATERNION'
+		# start.rotation_quaternion = s_quart
+
 		
-
-
-
+		start.rotation_mode = 'YXZ'
+		end.rotation_mode = 'YXZ'
+		
 		parent.scale = block.getScale()
 
 		# end.select_set(True)
 		# end.clrParent(mode=2)
 		# bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
-
 
 		constraint = connector.constraints.new('TRACK_TO')
 		constraint.track_axis = "TRACK_Y"
@@ -201,7 +204,7 @@ class BlenderAPI():
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
 		
-		return ""
+		return 
 
 	def RotateGlobal(self, obj, radian, axis):
 		rot_mat = Matrix.Rotation(radian, 4, axis)   # you can also use as axis Y,Z or a custom vector like (x,y,z)
@@ -226,6 +229,7 @@ class BlenderAPI():
 		l = []
 		for item in objs:
 			l.append(item.location)
+		# TODO Refactor GetDistance() to use global position
 		distance = sqrt( (l[0][0] - l[1][0])**2 + (l[0][1] - l[1][1])**2 + (l[0][2] - l[1][2])**2)
 		return distance
 
@@ -261,11 +265,6 @@ class BlenderAPI():
 			component._offset_rotation_y += 23 if block.flipped != 'True' else -23
 		# Rotate according to the offset data from the JSON file
 		
-		# bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_x), orient_axis='X')
-		# bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_y), orient_axis='Y')
-		# bpy.ops.transform.rotate(value=math.radians(component._offset_rotation_z), orient_axis='Z')
-
-
 		current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
 		current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
 		current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
@@ -273,18 +272,17 @@ class BlenderAPI():
 		# Translate according to the offset data from the JSON file
 		current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
 		bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-		# current_obj.matrix_world = Matrix()
 		# Set the scale according to the BSG file.
 		current_obj.scale = block.getScale()
 		# Set the rotation according to the BSG file. Note that this is described in the BSG file in Quarternions
 		current_obj.rotation_mode = 'QUATERNION'
-		current_obj.rotation_quaternion  = Quaternion(block.getQuarternion()).inverted()
+		current_obj.rotation_quaternion = Quaternion(block.getQuarternion()).inverted()
 		current_obj.rotation_mode = 'XYZ'
 		# Set the location of the object according to the BSG file
 		current_obj.location = Vector(block.getVectorPosition())
 		# Rename the object
 		# The object will be named with the component name followed by a random number between 10000 and 99999
-		current_obj.name = component.base_source + "_" + str(hash(random.randint(10000, 99999)))
+		current_obj.name = component.base_source + "_" + block.guid
 		return current_obj
 
 	def CreateParent(self, obj_list:list) -> None:
@@ -302,13 +300,14 @@ class BlenderAPI():
 		o.empty_draw_type = 'PLAIN_AXES'
 
 
-	def FetchModel(self, block_name:str, skin_id:str, skin_name='Template') -> None:
+	def FetchModel(self, block_name:str, skin_id:str, skin_name='Template', only_texture=False) -> None:
 		'''
 		Finds the absolute path to the image and model of the skin needed.
 		Parameters
 			block_name : string : Name of the block to import (the name used in code)
 			skin_id : string : Steam workshop ID
 			skin_name : string : Name of the skin
+			only_texture : boolean : Only fetch the texture of the block
 		Return : Tuple or String
 		Exceptions : None
 		'''
@@ -332,6 +331,7 @@ class BlenderAPI():
 			result_t = self.AttemptLoad(cdir, '.png')
 			result_o = self.AttemptLoad(cdir, '.obj')
 			if result_t and result_o: return [result_o, result_t]
+			if only_texture and result_t: return result_t
 			print('\t\t >> Cannot find in {}'.format(cdir))
 		return ""
 
@@ -373,7 +373,3 @@ class BlenderAPI():
 				return m
 		generator = MaterialCatalog.DefaultMaterial(block, texture_path, mat_name)
 		return generator.Generate()
-
-
-
-	
