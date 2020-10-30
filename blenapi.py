@@ -22,15 +22,32 @@ class BlenderAPI():
 	workshop_store = ""
 	game_store = ""
 	backup_store = ""
-
 	status = ""
 	status_description = []
+	import_object_list = {}
+
+	#	[
+	#		"7" : [
+	# 				{
+	# 					"skin_name" : "1357987",
+	#					"skin_id" : "15246146",
+	#					"object_name" : "obj"
+	# 				}
+	#			  ]
+	#	]
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
 		self.workshop_store = ws_store
 		self.game_store = game_store
 		self.backup_store = backup
+
+	def LookupObject(self, block:Block, component:Component):
+		if block.block_id in self.import_object_list.keys():
+			self.import_object_list.update({block.block_id : []})
+		for skin in self.import_object_list[block.block_id]:
+			if skin['skin_id'] == component.skin_id:
+				return bpy.data.objects['skin_']
 
 	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False) -> None:
 		'''
@@ -139,7 +156,7 @@ class BlenderAPI():
 		end.name = "EndPoint_" + block.guid
 		connector.name = "Connector_" + block.guid
 
-		bpy.ops.object.select_all(action='DESELECT')
+		# bpy.ops.object.select_all(action='DESELECT')
 
 		# start_og_location = start.matrix_world.to_translation()		
 		# start.parent = parent
@@ -228,7 +245,7 @@ class BlenderAPI():
 		'''
 		l = []
 		for item in objs:
-			l.append(item.location)
+			l.append(item.matrix_world.to_translation())
 		# TODO Refactor GetDistance() to use global position
 		distance = sqrt( (l[0][0] - l[1][0])**2 + (l[0][1] - l[1][1])**2 + (l[0][2] - l[1][2])**2)
 		return distance
@@ -249,7 +266,7 @@ class BlenderAPI():
 		# TODO Fix material naming issues
 		# This can be done by importing a block, and then instead of importing it again from
 		# disk, the same block can be duplicated again. This will give a HUGE performance boost
-		bpy.ops.object.select_all(action='DESELECT')
+		# bpy.ops.object.select_all(action='DESELECT')
 		model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not vanilla_skins else self.FetchModel(component.base_source, 'Template', 'Template')
 		bpy.ops.import_scene.obj(filepath=model[0])
 		current_obj = list(bpy.context.selected_objects)[0]
