@@ -1743,6 +1743,11 @@
             "obj_source": "GAME_SKIN_DIR",
             "group": "BASE",
             "line_type_blocks": true,
+            "line_type_components": {
+                "start": "BraceSectionA",
+                "middle": "Connector",
+                "end": "BraceSectionA"
+            },
             "override_purge_materials": false,
             "update_materials": [],
             "part": "START",

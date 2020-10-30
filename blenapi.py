@@ -24,17 +24,9 @@ class BlenderAPI():
 	backup_store = ""
 	status = ""
 	status_description = []
+	temp_obj_list = []
 	import_object_list = {}
-
-	#	[
-	#		"7" : [
-	# 				{
-	# 					"skin_name" : "1357987",
-	#					"skin_id" : "15246146",
-	#					"object_name" : "obj"
-	# 				}
-	#			  ]
-	#	]
+	custom_import_object_list = {}
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
@@ -42,12 +34,59 @@ class BlenderAPI():
 		self.game_store = game_store
 		self.backup_store = backup
 
-	def LookupObject(self, block:Block, component:Component):
-		if block.block_id in self.import_object_list.keys():
+	def LookupObject(self, block:Block, component:Component, vanilla_skins=False):
+		print(">> Looking up : {} ({})".format(block.code_name, component.skin_name))
+		# if the block is not in the object list, create a new key
+		# and update it...
+		if not block.block_id in self.import_object_list.keys():
 			self.import_object_list.update({block.block_id : []})
-		for skin in self.import_object_list[block.block_id]:
-			if skin['skin_id'] == component.skin_id:
-				return bpy.data.objects['skin_']
+		else:
+			# ...otherwise, if the key exists, search for the skin
+			# we need and if we find it, return it...
+			for skin in self.import_object_list[block.block_id]:
+				if skin['skin_name'] == component.skin_name:
+					new_obj = bpy.data.objects[skin['object_name']].copy()
+					bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(new_obj)
+					return new_obj
+
+		# ...if we cannot find the skin we need, we'll import it
+		model = self.FetchModel(component.base_source, component.skin_id, component.skin_name)
+		bpy.ops.import_scene.obj(filepath=model[0])
+		current_obj = list(bpy.context.selected_objects)[0]
+		[bpy.data.materials.remove(m) for m in current_obj.data.materials]
+		skin_name = component.skin_name if not vanilla_skins else 'Template'
+		current_obj.active_material = self.GenerateMaterial(component, model[1], skin_name)
+		# Set the offset scale data from the JSON file
+		current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
+		# special offset for propellers...
+		# I'll think of a way to offset this in the json file...
+		# TODO Refactor offsetting code for propellers
+		if (block.block_id in ['26','55']):
+			component._offset_rotation_y += 23 if block.flipped != 'True' else -23
+		# Rotate according to the offset data from the JSON file
+		
+		current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
+		current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
+		current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
+
+		# Translate according to the offset data from the JSON file
+		current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
+		bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+		current_obj.name = str(hash(current_obj.name))
+		newobj = current_obj.copy()
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(newobj)
+
+		skin_data_template = {
+			'skin_name' : component.skin_name,
+			'skin_id' : component.skin_id,
+			'object_name' : current_obj.name
+		}
+
+		self.import_object_list[block.block_id].append(skin_data_template)
+
+		return newobj
+
 
 	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False) -> None:
 		'''
@@ -59,13 +98,16 @@ class BlenderAPI():
 		Return : None
 		Exceptions : None
 		'''
+		self.import_object_list = {}
+		self.custom_import_object_list = {}
+
 		ReaderInstance = Reader(path)
 		block_list = ReaderInstance.ReadBlockData()
 		imported_list = []
 
-		for block in block_list:
-			for comp in block.components:
-				print("Block {} >> Component {} ({})".format(block.block_id, comp.base_source, id(comp)))
+		# for block in block_list:
+		# 	for comp in block.components:
+		# 		print("Block {} >> Component {} ({})".format(block.block_id, comp.base_source, id(comp)))
 		
 		print("Importing {} blocks...".format(len(block_list)))
 
@@ -80,14 +122,32 @@ class BlenderAPI():
 
 		for block in normal_draw:
 			for component in block.components:
-				bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		for block in line_draw:
 			for component in block.components:
-				bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
+				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))		
-		
+	
+	def ImportCustomModel(self, block_name):
+
+		if not block_name in self.custom_import_object_list.keys():
+			print(">> Importing Custom Block : {}".format(block_name))
+			dir_path = self.AttemptLoad(os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name), ".obj")
+			bpy.ops.import_scene.obj(filepath=dir_path)
+			block = list(bpy.context.selected_objects)[0]
+
+			block.name = str(hash(block.name))
+			clone = block.copy()
+			self.custom_import_object_list.update({block_name : {'model' : block.name}})
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
+			return clone
+		else:
+			clone = bpy.data.objects[self.custom_import_object_list[block_name]['model']].copy()
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
+			return clone
+			
 
 	def BlockDrawTypeLineType(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
 		'''
@@ -100,25 +160,22 @@ class BlenderAPI():
 		Returns : Object
 		Exceptions : None
 		'''
+		texture_path = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
 
-		texture = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
-	
-		material = self.GenerateMaterial(component, texture, component.skin_name)
+		
 
+		material = self.GenerateMaterial(component, texture_path, component.skin_name)
 
 		# TODO Remove hard coded file paths
 		# TODO Fix warped brace cube issues
-		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\Connector\\connector.obj")
-		connector = list(bpy.context.selected_objects)[0]
+		connector = self.ImportCustomModel(component.line_type_middle)
 		connector.location= Vector((0,0,0))
 		connector.active_material = material
 
-		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
-		start = list(bpy.context.selected_objects)[0]
+		start = self.ImportCustomModel(component.line_type_end)
 		start.active_material = material
 
-		bpy.ops.import_scene.obj(filepath="D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks\\BraceSectionA\\brace_cube.obj")
-		end = list(bpy.context.selected_objects)[0]
+		end = self.ImportCustomModel(component.line_type_start)
 		end.active_material = material
 
 		parent = bpy.data.objects.new( "empty", None)
@@ -126,7 +183,6 @@ class BlenderAPI():
 		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(parent)
 		parent.empty_display_size = 0.25
 		parent.empty_display_type = 'CUBE'
-
 
 		start.location = Vector(block.GetLineStartPosition())
 		end.location = Vector(block.GetLineEndPosition())
@@ -217,9 +273,9 @@ class BlenderAPI():
 		connector.dimensions[1] = distance
 
 		# TODO Calibrate distance threshold to delete connector block and end block
-		if distance < 0.15:
-			bpy.data.objects.remove(connector)
-			bpy.data.objects.remove(end)
+		# if distance < 0.15:
+		# 	bpy.data.objects.remove(connector)
+		# 	bpy.data.objects.remove(end)
 		
 		return 
 
@@ -245,7 +301,7 @@ class BlenderAPI():
 		'''
 		l = []
 		for item in objs:
-			l.append(item.matrix_world.to_translation())
+			l.append(item.location)
 		# TODO Refactor GetDistance() to use global position
 		distance = sqrt( (l[0][0] - l[1][0])**2 + (l[0][1] - l[1][1])**2 + (l[0][2] - l[1][2])**2)
 		return distance
@@ -261,34 +317,39 @@ class BlenderAPI():
 		Return : Object
 		Exceptions : None
 		'''
-		# TODO Refactor `blenapi.BlockDrawTypeDefault()`
-		# TODO Do something to avoid importing every single from block from disk
-		# TODO Fix material naming issues
-		# This can be done by importing a block, and then instead of importing it again from
-		# disk, the same block can be duplicated again. This will give a HUGE performance boost
-		# bpy.ops.object.select_all(action='DESELECT')
-		model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not vanilla_skins else self.FetchModel(component.base_source, 'Template', 'Template')
-		bpy.ops.import_scene.obj(filepath=model[0])
-		current_obj = list(bpy.context.selected_objects)[0]
-		[bpy.data.materials.remove(m) for m in current_obj.data.materials]
-		skin_name = component.skin_name if not vanilla_skins else 'Template'
-		current_obj.active_material = self.GenerateMaterial(component, model[1], skin_name)
-		# Set the offset scale data from the JSON file
-		current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
-		# special offset for propellers...
-		# I'll think of a way to offset this in the json file...
-		# TODO Refactor offsetting code for propellers
-		if (block.block_id in ['26','55']):
-			component._offset_rotation_y += 23 if block.flipped != 'True' else -23
-		# Rotate according to the offset data from the JSON file
+		# # TODO Refactor `blenapi.BlockDrawTypeDefault()`
+		# # TODO Do something to avoid importing every single from block from disk
+		# # TODO Fix material naming issues
+		# # This can be done by importing a block, and then instead of importing it again from
+		# # disk, the same block can be duplicated again. This will give a HUGE performance boost
+		# # bpy.ops.object.select_all(action='DESELECT')
+		# model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not vanilla_skins else self.FetchModel(component.base_source, 'Template', 'Template')
+		# bpy.ops.import_scene.obj(filepath=model[0])
+		# current_obj = list(bpy.context.selected_objects)[0]
+		# [bpy.data.materials.remove(m) for m in current_obj.data.materials]
+		# skin_name = component.skin_name if not vanilla_skins else 'Template'
+		# current_obj.active_material = self.GenerateMaterial(component, model[1], skin_name)
+		# # Set the offset scale data from the JSON file
+		# current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
+		# # special offset for propellers...
+		# # I'll think of a way to offset this in the json file...
+		# # TODO Refactor offsetting code for propellers
+		# if (block.block_id in ['26','55']):
+		# 	component._offset_rotation_y += 23 if block.flipped != 'True' else -23
+		# # Rotate according to the offset data from the JSON file
 		
-		current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
-		current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
-		current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
+		# current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
+		# current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
+		# current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
 
-		# Translate according to the offset data from the JSON file
-		current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
-		bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+		# # Translate according to the offset data from the JSON file
+		# current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
+		# bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+		current_obj = self.LookupObject(block, component, vanilla_skins)
+
+		# .......................................................
+
 		# Set the scale according to the BSG file.
 		current_obj.scale = block.getScale()
 		# Set the rotation according to the BSG file. Note that this is described in the BSG file in Quarternions
@@ -341,7 +402,7 @@ class BlenderAPI():
 			os.path.join(self.workshop_store, skin_id, dlist[0], block_name),
 			os.path.join(self.game_store, skin_name, block_name),
 			os.path.join(self.backup_store, block_name),
-			os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name)
+			# os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name)
 		]
 
 		for cdir in model_dirs:

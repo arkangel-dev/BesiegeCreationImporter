@@ -18,6 +18,9 @@ class Component():
 	skin_name = ""
 	skin_id = ""
 
+	line_type_start = ""
+	line_type_end = ""
+	line_type_middle = ""
 	line_type_block = False
 	
 	def __init__(self, translate:list, rotation:list, scale:list):

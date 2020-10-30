@@ -113,6 +113,10 @@ class Reader():
 				current_comp_inst.base_source = component['base_source']
 				current_comp_inst.group = component['group']
 				current_comp_inst.line_type_block = component['line_type_blocks']
+				if current_comp_inst.line_type_block:
+					current_comp_inst.line_type_start = component['line_type_components']['start']
+					current_comp_inst.line_type_end = component['line_type_components']['end']
+					current_comp_inst.line_type_middle = component['line_type_components']['middle']
 				current_block.components.append(deepcopy(current_comp_inst))
 			
 			returnList.append(current_block)
