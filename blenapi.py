@@ -35,23 +35,18 @@ class BlenderAPI():
 		self.backup_store = backup
 
 	def LookupObject(self, block:Block, component:Component, vanilla_skins=False):
-		print(">> Looking up : {} ({})".format(block.code_name, component.skin_name))
-		sid = str(hash(block.block_id + component.skin_name + block.flipped))
 		# if the block is not in the object list, create a new key
 		# and update it...
+		sid = str(hash(block.block_id + component.skin_name + block.flipped))
 		if sid in self.import_object_list.keys():
 			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(new_obj)
 			return new_obj
 		else:
-
 			# ...if we cannot find the skin we need, we'll import it
 			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name)
 			bpy.ops.import_scene.obj(filepath=model[0])
 			current_obj = list(bpy.context.selected_objects)[0]
-
-
-
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
 			skin_name = component.skin_name if not vanilla_skins else 'Template'
 			current_obj.active_material = self.GenerateMaterial(component, model[1], skin_name)
@@ -60,32 +55,22 @@ class BlenderAPI():
 			# special offset for propellers...
 			# I'll think of a way to offset this in the json file...
 			# TODO Refactor offsetting code for propellers
-
-			
 			if (block.block_id in ['26','55']):
 				component._offset_rotation_y += 23 if block.flipped != 'True' else -23
-					
 			# Rotate according to the offset data from the JSON file
-			
 			current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
 			current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
 			current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
-
 			# Translate according to the offset data from the JSON file
 			current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
 			bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-
 			current_obj.name = str(hash(current_obj.name))
+			self.temp_obj_list.append(current_obj)
 			newobj = current_obj.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(newobj)
-
-			skin_data_template = {
-				sid : current_obj.name
-			}
-
+			skin_data_template = {sid : current_obj.name}
 			self.import_object_list.update(skin_data_template)
 			return newobj
-
 
 	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False) -> None:
 		'''
@@ -104,10 +89,6 @@ class BlenderAPI():
 		block_list = ReaderInstance.ReadBlockData()
 		imported_list = []
 
-		# for block in block_list:
-		# 	for comp in block.components:
-		# 		print("Block {} >> Component {} ({})".format(block.block_id, comp.base_source, id(comp)))
-		
 		print("Importing {} blocks...".format(len(block_list)))
 
 		normal_draw = []
@@ -121,25 +102,26 @@ class BlenderAPI():
 
 		for block in normal_draw:
 			for component in block.components:
-				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		for block in line_draw:
 			for component in block.components:
-				# bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1)
 				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))		
-	
-	def ImportCustomModel(self, block_name):
+		
+		for block in self.temp_obj_list:
+			bpy.data.objects.remove(block)
+		self.temp_obj_list.clear()
 
+	def ImportCustomModel(self, block_name):
 		if not block_name in self.custom_import_object_list.keys():
 			dir_path = self.AttemptLoad(os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name), ".obj")
 			bpy.ops.import_scene.obj(filepath=dir_path)
 			block = list(bpy.context.selected_objects)[0]
-
 			block.name = str(hash(block.name))
 			clone = block.copy()
 			self.custom_import_object_list.update({block_name : {'model' : block.name}})
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
+			self.temp_obj_list.append(block)
 			return clone
 		else:
 			clone = bpy.data.objects[self.custom_import_object_list[block_name]['model']].copy()
@@ -159,110 +141,72 @@ class BlenderAPI():
 		Exceptions : None
 		'''
 		texture_path = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
-
-		
-
 		material = self.GenerateMaterial(component, texture_path, component.skin_name)
 
 		# TODO Remove hard coded file paths
 		# TODO Fix warped brace cube issues
+		# Import the connector, start and end objects
 		connector = self.ImportCustomModel(component.line_type_middle)
-		connector.location= Vector((0,0,0))
+		start = self.ImportCustomModel(component.line_type_end)
+		end = self.ImportCustomModel(component.line_type_start)
+
+		# Set the material for models
+		start.active_material = material
+		end.active_material = material
 		connector.active_material = material
 
-		start = self.ImportCustomModel(component.line_type_end)
-		start.active_material = material
-
-		end = self.ImportCustomModel(component.line_type_start)
-		end.active_material = material
-
+		# Create the empty object. We'll be using it as
+		# a parent
 		parent = bpy.data.objects.new( "empty", None)
-		# bpy.context.scene.collection.objects.link(parent)
-		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(parent)
 		parent.empty_display_size = 0.25
 		parent.empty_display_type = 'CUBE'
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(parent)
 
+		# Set the location of the blocks
 		start.location = Vector(block.GetLineStartPosition())
 		end.location = Vector(block.GetLineEndPosition())
 		connector.location = Vector(block.GetLineStartPosition())
-		# start.rotation_euler = Euler(block.GetLineStartRotation())
-		# end.rotation_euler = Euler(block.GetLineEndRotation())
+		parent.location = Vector((block.getVectorPosition()))
 
+		# Set parents of the start, end
+		# and connector block to the empty object
 		start.parent = parent
 		end.parent = parent
 		connector.parent = parent
 
-		parent.location = Vector((block.getVectorPosition()))
+		# Set the rotation of the parent, So it'll
+		# transforming the other child blocks as well
 		parent.rotation_mode = 'QUATERNION'
 		parent.rotation_quaternion = Quaternion(block.getQuarternion()).inverted()
 		parent.rotation_mode = 'XYZ'
 
-		# start.parent = None
-		# start.location = parent.location
-		
-		# start.select_set(True)
-		# end.select_set(True)
-		# bpy.ops.object.select_all(action='DESELECT')
-		# bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
-
+		# Set the name of the blocks. We'll be
+		# using the GUID in the name so it'll be
+		# easier to debug
 		parent.name = "Brace_" + block.guid
 		start.name = "StartPoint_" + block.guid
 		end.name = "EndPoint_" + block.guid
 		connector.name = "Connector_" + block.guid
 
-		# bpy.ops.object.select_all(action='DESELECT')
-
-		# start_og_location = start.matrix_world.to_translation()		
-		# start.parent = parent
-		# start.location = start_og_location
-		# start.matrix_parent_inverse = parent.matrix_world.inverted()
-
-		# end_og_location = end.matrix_world.to_translation()		
-		# end.parent = parent
-		# end.location = end_og_location
-		# end.matrix_parent_inverse = parent.matrix_world.inverted()
-
+		# Set the rotation to the start and end rotation.
 		start.rotation_euler.x -= block.GetLineStartRotation()[0]
 		start.rotation_euler.y -= block.GetLineStartRotation()[1]
 		start.rotation_euler.z -= block.GetLineStartRotation()[2]
-
-		# start.rotation_euler.rotate_axis('X', block.GetLineStartRotation()[0])
-		# start.rotation_euler.rotate_axis('Y', block.GetLineStartRotation()[1])
-		# start.rotation_euler.rotate_axis('Z', block.GetLineStartRotation()[2])
-
-		# end.rotation_euler.rotate_axis('X', block.GetLineEndRotation()[0])
-		# end.rotation_euler.rotate_axis('Y', block.GetLineEndRotation()[1])
-		# end.rotation_euler.rotate_axis('Z', block.GetLineEndRotation()[2])
-
 		end.rotation_euler.x -= block.GetLineEndRotation()[0]
 		end.rotation_euler.y -= block.GetLineEndRotation()[1]
 		end.rotation_euler.z -= block.GetLineEndRotation()[2]
 
-
-		# start.rotation_euler.x += math.radians(90)
-		# start.rotation_euler.y += math.radians(90)
-
-
-		# e_quart = end.rotation_quaternion
-		# e_quart.invert()
-		# end.rotation_mode = 'QUATERNION'
-		# end.rotation_quaternion = e_quart
-
-		# s_quart = start.rotation_quaternion
-		# s_quart.invert()
-		# start.rotation_mode = 'QUATERNION'
-		# start.rotation_quaternion = s_quart
-
-		
+		# Set the rotation mode of the end and start block
 		start.rotation_mode = 'YXZ'
 		end.rotation_mode = 'YXZ'
-		
+
+		# Set the scale of the parent object,
+		# which will deform the blocks
 		parent.scale = block.getScale()
 
-		# end.select_set(True)
-		# end.clrParent(mode=2)
-		# bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
-
+		# We'll be using a Track-To contraint to point the start block at the end block.
+		# So here we'll be creating the contraint and configuring it to point at the end
+		# block
 		constraint = connector.constraints.new('TRACK_TO')
 		constraint.track_axis = "TRACK_Y"
 		constraint.up_axis = "UP_X"
@@ -271,21 +215,33 @@ class BlenderAPI():
 		connector.dimensions[1] = distance
 
 		# TODO Calibrate distance threshold to delete connector block and end block
+		# If the length between the starting and end block is less than a specific value
+		# the end and the connector block will be deleted. This specific value... we dont
+		# know
 		if distance < 0.15:
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
-		
-		return 
+		return parent
 
-	def RotateGlobal(self, obj, radian, axis):
-		rot_mat = Matrix.Rotation(radian, 4, axis)   # you can also use as axis Y,Z or a custom vector like (x,y,z)
-
+	def RotateGlobal(self, obj, radian, axis) -> None:
+		'''
+		Rotate an object on the global axis
+		Parameters
+			obj : Object : Object to rotate
+			radian : float : Rotation value in radians
+			axis : string : Rotation axies
+		Return : None
+		Exceptions : None
+		'''
+		# This thing is not working. and I have no idea how to make it
+		# work. I hate it... I hate fucking braces so much...
+		# you can also use as axis Y,Z or a custom vector like (x,y,z)
+		rot_mat = Matrix.Rotation(radian, 4, axis) 
 		# decompose world_matrix's components, and from them assemble 4x4 matrices
 		orig_loc, orig_rot, orig_scale = obj.matrix_world.decompose()
 		orig_loc_mat = Matrix.Translation(orig_loc)
 		orig_rot_mat = orig_rot.to_matrix().to_4x4()
 		orig_scale_mat = Matrix.Scale(orig_scale[0],4,(1,0,0)) * Matrix.Scale(orig_scale[1],4,(0,1,0)) * Matrix.Scale(orig_scale[2],4,(0,0,1))
-
 		# assemble the new matrix
 		obj.matrix_world = orig_loc_mat * rot_mat * orig_rot_mat * orig_scale_mat 
 
@@ -316,48 +272,21 @@ class BlenderAPI():
 		Exceptions : None
 		'''
 		# # TODO Refactor `blenapi.BlockDrawTypeDefault()`
-		# # TODO Do something to avoid importing every single from block from disk
-		# # TODO Fix material naming issues
 		# # This can be done by importing a block, and then instead of importing it again from
 		# # disk, the same block can be duplicated again. This will give a HUGE performance boost
-		# # bpy.ops.object.select_all(action='DESELECT')
-		# model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not vanilla_skins else self.FetchModel(component.base_source, 'Template', 'Template')
-		# bpy.ops.import_scene.obj(filepath=model[0])
-		# current_obj = list(bpy.context.selected_objects)[0]
-		# [bpy.data.materials.remove(m) for m in current_obj.data.materials]
-		# skin_name = component.skin_name if not vanilla_skins else 'Template'
-		# current_obj.active_material = self.GenerateMaterial(component, model[1], skin_name)
-		# # Set the offset scale data from the JSON file
-		# current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
-		# # special offset for propellers...
-		# # I'll think of a way to offset this in the json file...
-		# # TODO Refactor offsetting code for propellers
-		# if (block.block_id in ['26','55']):
-		# 	component._offset_rotation_y += 23 if block.flipped != 'True' else -23
-		# # Rotate according to the offset data from the JSON file
-		
-		# current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
-		# current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
-		# current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
-
-		# # Translate according to the offset data from the JSON file
-		# current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
-		# bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-
 		current_obj = self.LookupObject(block, component, vanilla_skins)
-
-		# .......................................................
-
 		# Set the scale according to the BSG file.
 		current_obj.scale = block.getScale()
-		# Set the rotation according to the BSG file. Note that this is described in the BSG file in Quarternions
+		# Set the rotation according to the BSG file.
+		# Note: This is described in the BSG file in Quarternions
 		current_obj.rotation_mode = 'QUATERNION'
 		current_obj.rotation_quaternion = Quaternion(block.getQuarternion()).inverted()
 		current_obj.rotation_mode = 'XYZ'
 		# Set the location of the object according to the BSG file
 		current_obj.location = Vector(block.getVectorPosition())
-		# Rename the object
-		# The object will be named with the component name followed by a random number between 10000 and 99999
+		# Rename the object.
+		# The name will have the block name and the block guid.
+		# Having the GUID will be helpful for debugging
 		current_obj.name = component.base_source + "_" + block.guid
 		return current_obj
 
@@ -399,10 +328,8 @@ class BlenderAPI():
 		model_dirs = [
 			os.path.join(self.workshop_store, skin_id, dlist[0], block_name),
 			os.path.join(self.game_store, skin_name, block_name),
-			os.path.join(self.backup_store, block_name),
-			# os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name)
+			os.path.join(self.backup_store, block_name)
 		]
-
 		for cdir in model_dirs:
 			result_t = self.AttemptLoad(cdir, '.png')
 			result_o = self.AttemptLoad(cdir, '.obj')
@@ -445,8 +372,5 @@ class BlenderAPI():
 		# TODO : Add NodeGroup setup
 		mat_name = block.base_source + skin_name + "Material"
 		for m in bpy.data.materials:
-			if str(mat_name) == str(m.name):
-				
-				return m
-		generator = MaterialCatalog.DefaultMaterial(block, texture_path, mat_name)
-		return generator.Generate()
+			if str(mat_name).__eq__(str(m.name)): return m
+		return MaterialCatalog.DefaultMaterial(block, texture_path, mat_name).Generate()
