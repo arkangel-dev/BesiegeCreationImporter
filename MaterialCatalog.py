@@ -23,7 +23,7 @@ class DefaultMaterial():
 		self.texture_path = texture_path
 		self.skin_name = skin_name
 		self.block = block
-		self.material_name = block.base_source + skin_name + "Material"
+		self.material_name = skin_name
 		self.material = replace_material
 		for m in bpy.data.materials:
 			if self.material_name.__eq__(m.name):

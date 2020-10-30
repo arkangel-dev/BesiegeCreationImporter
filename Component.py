@@ -33,6 +33,7 @@ class Component():
 		self._line_start_rot_x, self._line_start_rot_y, self._line_start_rot_z = start_rot
 		self._line_end_pos_x, self._line_end_pos_y, self._line_end_pos_z = end_pos
 		self._line_end_rot_x, self._line_end_rot_y, self._line_end_rot_z = end_rot
+	
 
 		
 
