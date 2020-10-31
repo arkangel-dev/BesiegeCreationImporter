@@ -4,7 +4,7 @@
 
 This is an addon for Blender to import Besiege Creations. Currently it works for Blender 2.90.1. I'm not sure if it works on older versions of Blender. I've had some people report issues with rotation of certain blocks on Blender 2.8, But I haven't tested it. Also blocks that come from mods will not be imported. duh.
 
-**Note: **All models are imported from the Besiege game data directory and steam workshop folder, so its recommended that you get a copy of the game from Steam.
+**Note:** All models are imported from the Besiege game data directory and steam workshop folder, so its recommended that you get a copy of the game from Steam.
 
 ### Usage
 
