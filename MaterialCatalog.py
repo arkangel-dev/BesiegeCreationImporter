@@ -2,7 +2,6 @@ import bpy
 
 # This class contains a list of methods to generate materials. I'll be adding more
 # material generation classes later. For stuff like canon muzzle flashes, smoke and etc
-
 class DefaultMaterial():
 	"""
 	This is the default skin for the blocks. Just a simple texture node hooked up to 

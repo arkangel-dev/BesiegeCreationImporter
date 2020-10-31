@@ -1,3 +1,5 @@
+![](https://img.shields.io/github/issues/arkangel-dev/BesiegeCreationImporter) [![Made With Love](https://img.shields.io/badge/Made%20With-Love-orange.svg)](https://github.com/chetanraj/awesome-github-badges)
+
 <img src="readme.assets/thumbnail_skin_update_git.png" alt="thumbnail_skin_update_git" style="zoom: 67%;" />
 
 # Besiege Creation Import Addon for Blender

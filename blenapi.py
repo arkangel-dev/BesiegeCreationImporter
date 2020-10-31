@@ -8,11 +8,14 @@ import random
 from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
-# from .bsgreader import Reader
 import Block
 import Component
-import MaterialCatalog
+from MaterialCatalog import *
 from bsgreader import Reader
+# from .bsgreader import Reader
+# from .Component import Component
+# from .Block import Block
+# from .MaterialCatalog import *
 
 class BlenderAPI():
 	# So we are defining 3 directories. One for the workshop skin directory, one 
@@ -23,6 +26,7 @@ class BlenderAPI():
 	game_store = ""
 	backup_store = ""
 	status = ""
+	custom_block_dir = ""
 	status_description = []
 	temp_obj_list = []
 	import_object_list = {}
@@ -33,8 +37,18 @@ class BlenderAPI():
 		self.workshop_store = ws_store
 		self.game_store = game_store
 		self.backup_store = backup
+		self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
+		# self.custom_block_dir = os.path.join(bpy.utils.script_path_user(), "addons", "BesiegeCreationImportAddon", 'CustomBlocks')
 
-	def LookupObject(self, block:Block, component:Component, vanilla_skins=False):
+	def LookupObject(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
+		'''	
+		Tries to find an object in the scene. If it does not exist, import it and add it
+		to the logbook
+		Parameters
+			block : Block : Block to import
+			component : Component : Component of the block to import
+			vanilla_skins : Boolean : If true, will use vanilla skins
+		'''
 		# if the block is not in the object list, create a new key
 		# and update it...
 		sid = str(hash(block.block_id + component.skin_name + block.flipped))
@@ -48,8 +62,7 @@ class BlenderAPI():
 			bpy.ops.import_scene.obj(filepath=model[0])
 			current_obj = list(bpy.context.selected_objects)[0]
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
-			skin_name = component.skin_name if not vanilla_skins else 'Template'
-			current_obj.active_material = self.GenerateMaterial(component, model[1], skin_name)
+			current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not vanilla_skins else 'Template')
 			# Set the offset scale data from the JSON file
 			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
 			# special offset for propellers...
@@ -82,46 +95,73 @@ class BlenderAPI():
 		Return : None
 		Exceptions : None
 		'''
+		# First we'll reset the object history because if we imported a model before this cycle,
+		# the import model methods will try to duplicate objects that does not exist
 		self.import_object_list = {}
 		self.custom_import_object_list = {}
 
+		# Create a reader instance. This class is used to read the data from the BSG file and
+		# create a list of Block classes
 		ReaderInstance = Reader(path)
 		block_list = ReaderInstance.ReadBlockData()
 		imported_list = []
 
 		print("Importing {} blocks...".format(len(block_list)))
 
+		# These lists will be used to find objects that were imported to
+		# parent them to an empty object once the import process has been
+		# completed
 		normal_draw = []
 		line_draw = []
 
+		# Catagorize all the blocks. We separate them by their draw type.
+		# Some objects will have to "drawn" differently than others.
 		for block in block_list:
 			if block.block_id in ['7']:
 				line_draw.append(block)
 			else:
 				normal_draw.append(block)
 
+		# This is for drawing "normal type blocks". These blocks have to be simply imported
+		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
 		for block in normal_draw:
 			for component in block.components:
 				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
+		# This is for drawing "line type blocks". These blocks are a bit more complicated. These blocks
+		# have a position and rotation for start and end blocks. These blocks are positioned and rotated.
+		# But due to fact people use exploit this to warp blocks, its a fucking nightmare to get it to work
 		for block in line_draw:
 			for component in block.components:
-				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))		
+				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))	
+
+		# There is also the "surface type block". But we dont speak of that... (╬▔皿▔)╯	
 		
+		# Then we get rid of the temp objects because we no longer need them :)
 		for block in self.temp_obj_list:
 			bpy.data.objects.remove(block)
 		self.temp_obj_list.clear()
 
-	def ImportCustomModel(self, block_name):
+	def ImportCustomModel(self, block_name:str) -> 'Object':
+		'''
+		Imports models from the models the addon library.
+		Parameters
+			block_name : string : Name of the block to import
+		Exceptions : None
+		Return : None
+		'''
+		# This will be used to import objects that aren't taken from the skin folder. While besiege does allow you to change the texture
+		# of blocks such as braces, contract spring block and rope and winch blocks, you cannot change the models themselves. They come with
+		# the game game. So we'll have to make our own models and pack them with the addon.
 		if not block_name in self.custom_import_object_list.keys():
-			dir_path = self.AttemptLoad(os.path.join("D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks", block_name), ".obj")
+			dir_path = self.AttemptLoad(os.path.join(self.custom_block_dir, block_name), ".obj")
 			bpy.ops.import_scene.obj(filepath=dir_path)
 			block = list(bpy.context.selected_objects)[0]
 			block.name = str(hash(block.name))
 			clone = block.copy()
-			self.custom_import_object_list.update({block_name : {'model' : block.name}})
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
 			self.temp_obj_list.append(block)
+			self.custom_import_object_list.update({block_name : {'model' : block.name}})
 			return clone
 		else:
 			clone = bpy.data.objects[self.custom_import_object_list[block_name]['model']].copy()
@@ -373,4 +413,4 @@ class BlenderAPI():
 		mat_name = block.base_source + skin_name + "Material"
 		for m in bpy.data.materials:
 			if str(mat_name).__eq__(str(m.name)): return m
-		return MaterialCatalog.DefaultMaterial(block, texture_path, mat_name).Generate()
+		return DefaultMaterial(block, texture_path, mat_name).Generate()

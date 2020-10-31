@@ -21,7 +21,7 @@ class Reader():
 
 	def __init__(self, src:str):
 		self.cfile = src
-		# atlas_dir = os.path.join(bpy.utils.script_path_user(), "addons", "BesiegeCreationImportAddon", 'object_transform_data_converted.json')
+		# atlas_dir = os.path.join(bpy.utils.script_path_user(), "addons", "BesiegeCreationImportAddon", 'object_transform_data_converted_v2.json')
 		atlas_dir = 'object_transform_data_converted_v2.json'
 		with open(atlas_dir) as json_file:
 			self.atlas = json.load(json_file)
