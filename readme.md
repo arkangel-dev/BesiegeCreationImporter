@@ -1,4 +1,4 @@
-![](https://img.shields.io/github/issues/arkangel-dev/BesiegeCreationImporter)![](https://img.shields.io/badge/Code%20Quality-Crappy-orange)![](https://img.shields.io/github/forks/arkangel-dev/BesiegeCreationImporter)![](https://img.shields.io/github/stars/arkangel-dev/BesiegeCreationImporter)
+![](https://img.shields.io/github/issues/arkangel-dev/BesiegeCreationImporter) ![](https://img.shields.io/badge/Code%20Quality-Crappy-orange) ![](https://img.shields.io/github/forks/arkangel-dev/BesiegeCreationImporter) ![](https://img.shields.io/github/stars/arkangel-dev/BesiegeCreationImporter)
 
 <img src="readme.assets/thumbnail_skin_update_git.png" alt="thumbnail_skin_update_git" style="zoom: 67%;" />
 
