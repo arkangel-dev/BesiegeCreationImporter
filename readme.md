@@ -1,4 +1,4 @@
-![](https://img.shields.io/github/issues/arkangel-dev/BesiegeCreationImporter) [![Made With Love](https://img.shields.io/badge/Made%20With-Love-orange.svg)](https://github.com/chetanraj/awesome-github-badges)
+![](https://img.shields.io/github/issues/arkangel-dev/BesiegeCreationImporter)![](https://img.shields.io/badge/Code%20Quality-Crappy-orange)![](https://img.shields.io/github/forks/arkangel-dev/BesiegeCreationImporter)![](https://img.shields.io/github/stars/arkangel-dev/BesiegeCreationImporter)
 
 <img src="readme.assets/thumbnail_skin_update_git.png" alt="thumbnail_skin_update_git" style="zoom: 67%;" />
 
@@ -12,9 +12,9 @@ This is an addon for Blender to import Besiege Creations. Currently it works for
 
 1. Download and install the addon
 2. Once installed you'll see a new tab called Besiege in the 3D viewport toolbar. Expand the settings section and you'll find 3 fields. `Game Folder`, `Workshop Folder` and `Backup Folder`.
-   - Game folder is the Skins directory that is located in the `Besiege_Data` directory. By default its set to `C:\Program Files (x86)\Steam\steamapps\common\Besiege\Besiege_Data\Skins`
-   - Workshop folder is the workshop content directory for Besiege. By default its set to `C:\Program Files (x86)\Steam\steamapps\workshop\content\346010`
-   - Backup is the skin pack to use in case the addon failed to find a skin specified in the BSG file. By default its set to the Template skin that is packed with Besiege (`C:\Program Files (x86)\Steam\steamapps\common\Besiege\Besiege_Data\Skins\Template`)
+   - Game folder is the Skins directory that is located in the `Besiege_Data` directory. 
+   - Workshop folder is the workshop content directory for Besiege.
+   - Backup is the skin pack to use in case the addon failed to find a skin specified in the BSG file. By default its set to the Template skin that is packed with Besiege.
 3. When importing you'll have a few options
    - **Generate Materials:** If not checked, materials will not be generated for the block. (`To Be Implemented`)
    - **Create Parent:** If checked, all the blocks will be parented to an empty after importing

@@ -10,7 +10,7 @@ from math import radians, pi, sqrt
 from pathlib import Path
 import Block
 import Component
-from MaterialCatalog import *
+from MaterialCatalog import DefaultMaterial
 from bsgreader import Reader
 # from .bsgreader import Reader
 # from .Component import Component
