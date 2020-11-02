@@ -58,10 +58,10 @@ class Block():
 		return (self._epx, self._epy, self._epz)
 
 	def GetLineStartRotation(self):
-		return (self.Convert(self._srx), self.Convert(self._sry), self.Convert(self._srz))
+		return (self.Convert(self._srx), self.Convert(self._srz), self.Convert(self._sry))
 
 	def GetLineEndRotation(self):
-		return (self.Convert(self._erx), self.Convert(self._ery), self.Convert(self._erz))
+		return (self.Convert(self._erx), self.Convert(self._erz), self.Convert(self._ery))
 
 	def Convert(self, val):
 		# return (val * pi / 180) 

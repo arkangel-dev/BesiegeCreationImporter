@@ -207,12 +207,14 @@ class BlenderAPI():
 		end.location = Vector(block.GetLineEndPosition())
 		connector.location = Vector(block.GetLineStartPosition())
 		parent.location = Vector((block.getVectorPosition()))
+		
 
 		# Set parents of the start, end
 		# and connector block to the empty object
 		start.parent = parent
 		end.parent = parent
 		connector.parent = parent
+
 
 		# Set the rotation of the parent, So it'll
 		# transforming the other child blocks as well
@@ -228,21 +230,45 @@ class BlenderAPI():
 		end.name = "EndPoint_" + block.guid
 		connector.name = "Connector_" + block.guid
 
+
+		self.ResetParentTransformRotation(end, parent)
+		self.ResetParentTransformRotation(start, parent)
+
 		# Set the rotation to the start and end rotation.
-		start.rotation_euler.x -= block.GetLineStartRotation()[0]
-		start.rotation_euler.y -= block.GetLineStartRotation()[1]
-		start.rotation_euler.z -= block.GetLineStartRotation()[2]
-		end.rotation_euler.x -= block.GetLineEndRotation()[0]
-		end.rotation_euler.y -= block.GetLineEndRotation()[1]
-		end.rotation_euler.z -= block.GetLineEndRotation()[2]
+		# start.rotation_euler.x -= block.GetLineStartRotation()[0]
+		# start.rotation_euler.y -= block.GetLineStartRotation()[1]
+		# start.rotation_euler.z -= block.GetLineStartRotation()[2]
+
+	
+
+		self.RotateGlobal(start, block.GetLineStartRotation()[0], 'X')
+		self.RotateGlobal(start, block.GetLineStartRotation()[1], 'Y')
+		self.RotateGlobal(start, block.GetLineStartRotation()[2], 'Z')
+
+
+		# end.rotation_euler.x -= block.GetLineEndRotation()[0]
+		# end.rotation_euler.y -= block.GetLineEndRotation()[1]
+		# end.rotation_euler.z -= block.GetLineEndRotation()[2]
+
+
+		self.RotateGlobal(end, block.GetLineEndRotation()[0], 'X')
+		self.RotateGlobal(end, block.GetLineEndRotation()[1], 'Y')
+		self.RotateGlobal(end, block.GetLineEndRotation()[2], 'Z')
+
+
+		# self.InvertRotation(end)
+		# self.InvertRotation(start)
+
+
 
 		# Set the rotation mode of the end and start block
-		start.rotation_mode = 'YXZ'
-		end.rotation_mode = 'YXZ'
+		start.rotation_mode = 'ZXY'
+		end.rotation_mode = 'ZXY'
 
 		# Set the scale of the parent object,
 		# which will deform the blocks
 		parent.scale = block.getScale()
+
 
 		# We'll be using a Track-To contraint to point the start block at the end block.
 		# So here we'll be creating the contraint and configuring it to point at the end
@@ -263,27 +289,32 @@ class BlenderAPI():
 			bpy.data.objects.remove(end)
 		return parent
 
+	def ResetParentTransformRotation(self, obj, parent):
+		bpy.context.view_layer.update()
+		ogloc = (obj.matrix_world.to_translation().x, obj.matrix_world.to_translation().y, obj.matrix_world.to_translation().z)
+		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+		print(ogloc)
+		obj.parent = None
+
+		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+		print(ogloc)
+		obj.location = Vector(ogloc)
+		obj.parent = parent
+		obj.matrix_parent_inverse = parent.matrix_world.inverted()
+		# pass
+
+
+	def InvertRotation(self, obj):
+		original_rot = obj.rotation_mode
+		obj.rotation_mode = 'QUATERNION'
+		obj.rotation_quaternion = obj.rotation_quaternion.inverted()
+		obj.rotation_mode = original_rot
+
 	def RotateGlobal(self, obj, radian, axis) -> None:
-		'''
-		Rotate an object on the global axis
-		Parameters
-			obj : Object : Object to rotate
-			radian : float : Rotation value in radians
-			axis : string : Rotation axies
-		Return : None
-		Exceptions : None
-		'''
-		# This thing is not working. and I have no idea how to make it
-		# work. I hate it... I hate fucking braces so much...
-		# you can also use as axis Y,Z or a custom vector like (x,y,z)
-		rot_mat = Matrix.Rotation(radian, 4, axis) 
-		# decompose world_matrix's components, and from them assemble 4x4 matrices
-		orig_loc, orig_rot, orig_scale = obj.matrix_world.decompose()
-		orig_loc_mat = Matrix.Translation(orig_loc)
-		orig_rot_mat = orig_rot.to_matrix().to_4x4()
-		orig_scale_mat = Matrix.Scale(orig_scale[0],4,(1,0,0)) * Matrix.Scale(orig_scale[1],4,(0,1,0)) * Matrix.Scale(orig_scale[2],4,(0,0,1))
-		# assemble the new matrix
-		obj.matrix_world = orig_loc_mat * rot_mat * orig_rot_mat * orig_scale_mat 
+		from math import radians
+		from mathutils import Matrix
+		obj.rotation_euler = (obj.rotation_euler.to_matrix() @ Matrix.Rotation(radian, 3, axis)).to_euler()
+		
 
 	def GetDistance(self, objs:list) -> float:
 		'''
@@ -294,8 +325,9 @@ class BlenderAPI():
 		Exceptions : None
 		'''
 		l = []
+		bpy.context.view_layer.update()
 		for item in objs:
-			l.append(item.location)
+			l.append(item.matrix_world.to_translation())
 		# TODO Refactor GetDistance() to use global position
 		distance = sqrt( (l[0][0] - l[1][0])**2 + (l[0][1] - l[1][1])**2 + (l[0][2] - l[1][2])**2)
 		return distance
