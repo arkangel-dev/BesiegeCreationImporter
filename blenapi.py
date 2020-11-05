@@ -239,31 +239,46 @@ class BlenderAPI():
 		# start.rotation_euler.y -= block.GetLineStartRotation()[1]
 		# start.rotation_euler.z -= block.GetLineStartRotation()[2]
 
-	
 
-		self.RotateGlobal(start, block.GetLineStartRotation()[0], 'X')
-		self.RotateGlobal(start, block.GetLineStartRotation()[1], 'Y')
-		self.RotateGlobal(start, block.GetLineStartRotation()[2], 'Z')
+		# self.RotateGlobal(start, block.GetLineStartRotation()[0], 'X')
+		# self.RotateGlobal(start, block.GetLineStartRotation()[1], 'Y')
+		# self.RotateGlobal(start, block.GetLineStartRotation()[2], 'Z')
+
+		start.rotation_euler = block.GetLineStartRotation()
+		start.rotation_mode = 'ZXY'
+		self.InvertRotation(start)
 
 
 		# end.rotation_euler.x -= block.GetLineEndRotation()[0]
 		# end.rotation_euler.y -= block.GetLineEndRotation()[1]
 		# end.rotation_euler.z -= block.GetLineEndRotation()[2]
 
+		end.rotation_euler = block.GetLineEndRotation()
+		end.rotation_mode = 'ZXY'
+		self.InvertRotation(end)
 
-		self.RotateGlobal(end, block.GetLineEndRotation()[0], 'X')
-		self.RotateGlobal(end, block.GetLineEndRotation()[1], 'Y')
-		self.RotateGlobal(end, block.GetLineEndRotation()[2], 'Z')
+
+		# bpy.context.view_layer.update()
+		
+		
+		
+
+
+		# self.RotateGlobal(end, block.GetLineEndRotation()[0], 'X')
+		# self.RotateGlobal(end, block.GetLineEndRotation()[1], 'Y')
+		# self.RotateGlobal(end, block.GetLineEndRotation()[2], 'Z')
 
 
 		# self.InvertRotation(end)
 		# self.InvertRotation(start)
 
+		# Note : Setting the rotation angle 
+
 
 
 		# Set the rotation mode of the end and start block
-		start.rotation_mode = 'ZXY'
-		end.rotation_mode = 'ZXY'
+		
+
 
 		# Set the scale of the parent object,
 		# which will deform the blocks
@@ -292,12 +307,7 @@ class BlenderAPI():
 	def ResetParentTransformRotation(self, obj, parent):
 		bpy.context.view_layer.update()
 		ogloc = (obj.matrix_world.to_translation().x, obj.matrix_world.to_translation().y, obj.matrix_world.to_translation().z)
-		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-		print(ogloc)
 		obj.parent = None
-
-		print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-		print(ogloc)
 		obj.location = Vector(ogloc)
 		obj.parent = parent
 		obj.matrix_parent_inverse = parent.matrix_world.inverted()
@@ -305,6 +315,11 @@ class BlenderAPI():
 
 
 	def InvertRotation(self, obj):
+
+		print("..........................................")
+		print(obj.rotation_euler)
+		print(obj)
+
 		original_rot = obj.rotation_mode
 		obj.rotation_mode = 'QUATERNION'
 		obj.rotation_quaternion = obj.rotation_quaternion.inverted()
