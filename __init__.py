@@ -57,6 +57,7 @@ class SettingsPanel(bpy.types.Panel):
 		layout.row().operator("mesh.importsaveglobalconfig", text = "Save Global Configuration")
 
 
+
 class ImportOperator(bpy.types.Operator):
 	"""Import the selected besiege file"""
 	bl_idname = "mesh.importoperator"

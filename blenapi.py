@@ -54,6 +54,7 @@ class BlenderAPI():
 		sid = str(hash(block.block_id + component.skin_name + block.flipped))
 		if sid in self.import_object_list.keys():
 			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
+			new_obj.data = bpy.data.objects[self.import_object_list[sid]].data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(new_obj)
 			return new_obj
 		else:
@@ -80,6 +81,7 @@ class BlenderAPI():
 			current_obj.name = str(hash(current_obj.name))
 			self.temp_obj_list.append(current_obj)
 			newobj = current_obj.copy()
+			newobj.data = current_obj.data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(newobj)
 			skin_data_template = {sid : current_obj.name}
 			self.import_object_list.update(skin_data_template)
@@ -159,12 +161,14 @@ class BlenderAPI():
 			block = list(bpy.context.selected_objects)[0]
 			block.name = str(hash(block.name))
 			clone = block.copy()
+			clone.data = block.data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
 			self.temp_obj_list.append(block)
 			self.custom_import_object_list.update({block_name : {'model' : block.name}})
 			return clone
 		else:
 			clone = bpy.data.objects[self.custom_import_object_list[block_name]['model']].copy()
+			clone.data = bpy.data.objects[self.custom_import_object_list[block_name]['model']].data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
 			return clone
 			
@@ -230,60 +234,25 @@ class BlenderAPI():
 		end.name = "EndPoint_" + block.guid
 		connector.name = "Connector_" + block.guid
 
-
+		# Reset the parent transformation data so that
+		# the rotation is (0,0,0). Basically doing
+		# parenting an object while keeping the transformation
 		self.ResetParentTransformRotation(end, parent)
 		self.ResetParentTransformRotation(start, parent)
 
-		# Set the rotation to the start and end rotation.
-		# start.rotation_euler.x -= block.GetLineStartRotation()[0]
-		# start.rotation_euler.y -= block.GetLineStartRotation()[1]
-		# start.rotation_euler.z -= block.GetLineStartRotation()[2]
-
-
-		# self.RotateGlobal(start, block.GetLineStartRotation()[0], 'X')
-		# self.RotateGlobal(start, block.GetLineStartRotation()[1], 'Y')
-		# self.RotateGlobal(start, block.GetLineStartRotation()[2], 'Z')
-
+		# Set the rotation of the start block
 		start.rotation_euler = block.GetLineStartRotation()
 		start.rotation_mode = 'ZXY'
 		self.InvertRotation(start)
 
-
-		# end.rotation_euler.x -= block.GetLineEndRotation()[0]
-		# end.rotation_euler.y -= block.GetLineEndRotation()[1]
-		# end.rotation_euler.z -= block.GetLineEndRotation()[2]
-
+		# Set the rotation of the end block
 		end.rotation_euler = block.GetLineEndRotation()
 		end.rotation_mode = 'ZXY'
 		self.InvertRotation(end)
 
-
-		# bpy.context.view_layer.update()
-		
-		
-		
-
-
-		# self.RotateGlobal(end, block.GetLineEndRotation()[0], 'X')
-		# self.RotateGlobal(end, block.GetLineEndRotation()[1], 'Y')
-		# self.RotateGlobal(end, block.GetLineEndRotation()[2], 'Z')
-
-
-		# self.InvertRotation(end)
-		# self.InvertRotation(start)
-
-		# Note : Setting the rotation angle 
-
-
-
-		# Set the rotation mode of the end and start block
-		
-
-
 		# Set the scale of the parent object,
 		# which will deform the blocks
 		parent.scale = block.getScale()
-
 
 		# We'll be using a Track-To contraint to point the start block at the end block.
 		# So here we'll be creating the contraint and configuring it to point at the end
@@ -299,7 +268,7 @@ class BlenderAPI():
 		# If the length between the starting and end block is less than a specific value
 		# the end and the connector block will be deleted. This specific value... we dont
 		# know
-		if distance < 0.15:
+		if distance < 0.5:
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
 		return parent
@@ -311,15 +280,8 @@ class BlenderAPI():
 		obj.location = Vector(ogloc)
 		obj.parent = parent
 		obj.matrix_parent_inverse = parent.matrix_world.inverted()
-		# pass
-
 
 	def InvertRotation(self, obj):
-
-		print("..........................................")
-		print(obj.rotation_euler)
-		print(obj)
-
 		original_rot = obj.rotation_mode
 		obj.rotation_mode = 'QUATERNION'
 		obj.rotation_quaternion = obj.rotation_quaternion.inverted()
@@ -329,7 +291,6 @@ class BlenderAPI():
 		from math import radians
 		from mathutils import Matrix
 		obj.rotation_euler = (obj.rotation_euler.to_matrix() @ Matrix.Rotation(radian, 3, axis)).to_euler()
-		
 
 	def GetDistance(self, objs:list) -> float:
 		'''
@@ -417,12 +378,13 @@ class BlenderAPI():
 			os.path.join(self.game_store, skin_name, block_name),
 			os.path.join(self.backup_store, block_name)
 		]
+
+		print(model_dirs[0])
 		for cdir in model_dirs:
 			result_t = self.AttemptLoad(cdir, '.png')
 			result_o = self.AttemptLoad(cdir, '.obj')
 			if result_t and result_o: return [result_o, result_t]
 			if only_texture and result_t: return result_t
-			print('\t\t >> Cannot find in {}'.format(cdir))
 		return ""
 
 	def AttemptLoad(self, directory:str, extension:str) -> bool:
