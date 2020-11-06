@@ -31,6 +31,13 @@ class BlenderAPI():
 	temp_obj_list = []
 	import_object_list = {}
 	custom_import_object_list = {}
+
+	setting_GenerateMaterial = False
+	setting_StopImportOnMissingskin = False
+	setting_use_vanilla_skin = False
+	setting_join_line_components = False
+	setting_hide_parent_empties = False
+	setting_brace_threshhold = 0.5
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
@@ -49,9 +56,10 @@ class BlenderAPI():
 			component : Component : Component of the block to import
 			vanilla_skins : Boolean : If true, will use vanilla skins
 		'''
+
 		# if the block is not in the object list, create a new key
 		# and update it...
-		sid = str(hash(block.block_id + component.skin_name + block.flipped))
+		sid = str(hash(block.block_id + component.skin_name + block.flipped)) if not self.setting_use_vanilla_skin else str(hash(block.block_id + "Template" + block.flipped))
 		if sid in self.import_object_list.keys():
 			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
 			new_obj.data = bpy.data.objects[self.import_object_list[sid]].data.copy()
@@ -59,11 +67,12 @@ class BlenderAPI():
 			return new_obj
 		else:
 			# ...if we cannot find the skin we need, we'll import it
-			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name)
+			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template")
 			bpy.ops.import_scene.obj(filepath=model[0])
 			current_obj = list(bpy.context.selected_objects)[0]
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
-			current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not vanilla_skins else 'Template')
+			if self.setting_GenerateMaterial:
+				current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not self.setting_use_vanilla_skin else 'Template')
 			# Set the offset scale data from the JSON file
 			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
 			# special offset for propellers...
@@ -87,7 +96,7 @@ class BlenderAPI():
 			self.import_object_list.update(skin_data_template)
 			return newobj
 
-	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False) -> None:
+	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False, generate_material=True, stop_import_on_missing_skin=False, join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -97,6 +106,14 @@ class BlenderAPI():
 		Return : None
 		Exceptions : None
 		'''
+
+		self.setting_GenerateMaterial = generate_material
+		self.setting_StopImportOnMissingskin = stop_import_on_missing_skin
+		self.setting_join_line_components = join_line_components
+		self.setting_hide_parent_empties = hide_parent_empties
+		self.setting_brace_threshhold = bracethreshold
+		self.setting_use_vanilla_skin = vanilla_skins
+
 		# First we'll reset the object history because if we imported a model before this cycle,
 		# the import model methods will try to duplicate objects that does not exist
 		self.import_object_list = {}
@@ -185,7 +202,7 @@ class BlenderAPI():
 		Exceptions : None
 		'''
 		texture_path = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
-		material = self.GenerateMaterial(component, texture_path, component.skin_name)
+		
 
 		# TODO Remove hard coded file paths
 		# TODO Fix warped brace cube issues
@@ -195,9 +212,11 @@ class BlenderAPI():
 		end = self.ImportCustomModel(component.line_type_start)
 
 		# Set the material for models
-		start.active_material = material
-		end.active_material = material
-		connector.active_material = material
+		if self.setting_GenerateMaterial:
+			material = self.GenerateMaterial(component, texture_path, component.skin_name) if not self.setting_use_vanilla_skin else self.GenerateMaterial(component, texture_path, "Template")
+			start.active_material = material
+			end.active_material = material
+			connector.active_material = material
 
 		# Create the empty object. We'll be using it as
 		# a parent
@@ -268,9 +287,23 @@ class BlenderAPI():
 		# If the length between the starting and end block is less than a specific value
 		# the end and the connector block will be deleted. This specific value... we dont
 		# know
-		if distance < 0.5:
+
+		print(self.setting_brace_threshhold)
+
+		if distance < self.setting_brace_threshhold:
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
+
+		elif self.setting_join_line_components:
+			for obj in bpy.context.selected_objects: obj.select_set(False)
+			bpy.context.view_layer.objects.active = start
+			connector.select_set(True)
+			start.select_set(True)
+			end.select_set(True)
+			bpy.ops.object.join()
+
+		if self.setting_hide_parent_empties: parent.hide_set(True)
+		
 		return parent
 
 	def ResetParentTransformRotation(self, obj, parent):
@@ -419,6 +452,7 @@ class BlenderAPI():
 		'''
 		# Ok time to generate the material. So first We generate the material and then we return it... Its that simple
 		# TODO : Add NodeGroup setup
+
 		mat_name = block.base_source + skin_name + "Material"
 		for m in bpy.data.materials:
 			if str(mat_name).__eq__(str(m.name)): return m

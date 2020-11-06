@@ -28,6 +28,5 @@ This is an addon for Blender to import Besiege Creations. Currently it works for
 
 ### Things that are not working
 
-- Warped brace cubes
 - Surface blocks
 - Short wooden poles and blocks

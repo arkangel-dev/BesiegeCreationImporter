@@ -32,16 +32,12 @@ class MainPanel(bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 		layout.scale_x = 2
-	
-		layout.row().prop(context.scene, 'bsgimp_bsg_path', icon='FILE')
-		layout.row().prop(context.scene, 'bsgimp_generate_materials')
 		layout.row().prop(context.scene, 'bsgimp_create_parent')
-		layout.row().prop(context.scene, 'bsgimp_use_vanilla_blocks')
-		layout.row().prop(context.scene, 'bsgimp_halt_missing')
+		layout.row().prop(context.scene, 'bsgimp_bsg_path', icon='FILE')
 		layout.row().operator("mesh.importoperator", text = "Import")
 
 class SettingsPanel(bpy.types.Panel):
-	bl_label = "Settings"
+	bl_label = "Addon Settings"
 	bl_idname = "PT_SettingsPanel"
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
@@ -56,7 +52,35 @@ class SettingsPanel(bpy.types.Panel):
 		layout.row().prop(context.scene, 'bsgimp_backup_skin')
 		layout.row().operator("mesh.importsaveglobalconfig", text = "Save Global Configuration")
 
+class LineTypeObjectSettings(bpy.types.Panel):
+	bl_label = "Line Type Blocks"
+	bl_idname = "PT_LineTypeSettingPanel"
+	bl_space_type = "VIEW_3D"
+	bl_region_type = "UI"
+	bl_category = "Besiege"
+	bl_parent_id = "PT_MainPanel"
+	bl_options = {'DEFAULT_CLOSED'}
 
+	def draw(self, context):
+		layout = self.layout
+		layout.row().prop(context.scene, 'bsgimp_line_type_join_components')
+		layout.row().prop(context.scene, 'bsgimp_line_type_hide_parent_objects')
+		layout.row().prop(context.scene, 'bsgimp_line_type_brace_delete_threshold')
+
+class SkinSettings(bpy.types.Panel):
+	bl_label = "Skin Settings"
+	bl_idname = "PT_SkinSettingsPanel"
+	bl_space_type = "VIEW_3D"
+	bl_region_type = "UI"
+	bl_category = "Besiege"
+	bl_parent_id = "PT_MainPanel"
+	bl_options = {'DEFAULT_CLOSED'}
+
+	def draw(self, context):
+		layout = self.layout
+		layout.row().prop(context.scene, 'bsgimp_generate_materials')
+		layout.row().prop(context.scene, 'bsgimp_use_vanilla_blocks')
+		layout.row().prop(context.scene, 'bsgimp_halt_missing')
 
 class ImportOperator(bpy.types.Operator):
 	"""Import the selected besiege file"""
@@ -78,7 +102,11 @@ class ImportOperator(bpy.types.Operator):
 		self.importer.ImportCreation(
 			bpy.path.abspath(context.scene.bsgimp_bsg_path), 
 			vanilla_skins=context.scene.bsgimp_use_vanilla_blocks,
-			create_parent=context.scene.bsgimp_create_parent
+			create_parent=context.scene.bsgimp_create_parent,
+			join_line_components=context.scene.bsgimp_line_type_join_components,
+			generate_material=context.scene.bsgimp_generate_materials,
+			bracethreshold=context.scene.bsgimp_line_type_brace_delete_threshold
+
 		)
 		return({'FINISHED'})
 
@@ -96,9 +124,13 @@ class SaveGlobalConfiguration(bpy.types.Operator):
 def register():
 	# register classes
 	bpy.utils.register_class(MainPanel)
+	
+	bpy.utils.register_class(SkinSettings)
+	bpy.utils.register_class(LineTypeObjectSettings)
 	bpy.utils.register_class(SettingsPanel)
-	bpy.utils.register_class(ImportOperator)
 	bpy.utils.register_class(SaveGlobalConfiguration)
+	bpy.utils.register_class(ImportOperator)
+	
 	
 	# register properties
 	# paths
@@ -113,9 +145,16 @@ def register():
 	bpy.types.Scene.bsgimp_halt_missing = bpy.props.BoolProperty(name = "Stop import on missing skin", default=False, description = "Stop the import process if a specific skin could not be found")
 	bpy.types.Scene.bsgimp_create_parent = bpy.props.BoolProperty(name = "Create parent", default=False, description = "Create a boundbox around creation and parent all blocks to it")
 
+	# line type object properties
+	bpy.types.Scene.bsgimp_line_type_join_components = bpy.props.BoolProperty(name = "Join components", default=False, description="If checked, the addon will join the components of a line type block and delete the parent object")
+	bpy.types.Scene.bsgimp_line_type_hide_parent_objects = bpy.props.BoolProperty(name = "Hide parent empties", default=True, description="Hide the parent empties after importing the blocks")
+	bpy.types.Scene.bsgimp_line_type_brace_delete_threshold = bpy.props.FloatProperty(name = "Brace Threshold", default=0.5, description="The minimum length a brace should have before the connector and end block gets deleted")
+
+
 def unregister():
 	# unregister classes	
 	bpy.utils.unregister_class(MainPanel)
+	bpy.utils.unregister_class(LineTypeObjectSettings)
 	bpy.utils.unregister_class(SettingsPanel)
 	bpy.utils.unregister_class(ImportOperator)
 	bpy.utils.unregister_class(SaveGlobalConfiguration)
