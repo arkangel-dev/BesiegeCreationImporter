@@ -70,7 +70,7 @@ class Reader():
 					if key.get('key').__eq__('flipped'):
 						current_block.flipped = key.text
 
-			if (block_id in ['7']):
+			if (block_id in ['7','9','45']):
 				for key in block.find("Data").getchildren():
 					if key.get('key').__eq__('start-position'): sp = [key.find('X').text, key.find('Y').text, key.find('Z').text]
 					if key.get('key').__eq__('end-position'): ep = [key.find('X').text, key.find('Y').text, key.find('Z').text]

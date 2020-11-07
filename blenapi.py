@@ -77,7 +77,6 @@ class BlenderAPI():
 			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
 			# special offset for propellers...
 			# I'll think of a way to offset this in the json file...
-			# TODO Refactor offsetting code for propellers
 			if (block.block_id in ['26','55']):
 				component._offset_rotation_y += 23 if block.flipped != 'True' else -23
 			# Rotate according to the offset data from the JSON file
@@ -136,7 +135,7 @@ class BlenderAPI():
 		# Catagorize all the blocks. We separate them by their draw type.
 		# Some objects will have to "drawn" differently than others.
 		for block in block_list:
-			if block.block_id in ['7']:
+			if block.block_id in ['7','9','45']:
 				line_draw.append(block)
 			else:
 				normal_draw.append(block)
@@ -203,9 +202,6 @@ class BlenderAPI():
 		'''
 		texture_path = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
 		
-
-		# TODO Remove hard coded file paths
-		# TODO Fix warped brace cube issues
 		# Import the connector, start and end objects
 		connector = self.ImportCustomModel(component.line_type_middle)
 		start = self.ImportCustomModel(component.line_type_end)
@@ -283,7 +279,6 @@ class BlenderAPI():
 		distance = self.GetDistance([start, end])
 		connector.dimensions[1] = distance
 
-		# TODO Calibrate distance threshold to delete connector block and end block
 		# If the length between the starting and end block is less than a specific value
 		# the end and the connector block will be deleted. This specific value... we dont
 		# know
@@ -337,7 +332,6 @@ class BlenderAPI():
 		bpy.context.view_layer.update()
 		for item in objs:
 			l.append(item.matrix_world.to_translation())
-		# TODO Refactor GetDistance() to use global position
 		distance = sqrt( (l[0][0] - l[1][0])**2 + (l[0][1] - l[1][1])**2 + (l[0][2] - l[1][2])**2)
 		return distance
 
@@ -352,7 +346,6 @@ class BlenderAPI():
 		Return : Object
 		Exceptions : None
 		'''
-		# # TODO Refactor `blenapi.BlockDrawTypeDefault()`
 		# # This can be done by importing a block, and then instead of importing it again from
 		# # disk, the same block can be duplicated again. This will give a HUGE performance boost
 		current_obj = self.LookupObject(block, component, vanilla_skins)

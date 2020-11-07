@@ -1,8 +1,8 @@
 bl_info = {
 	"name": "Import Besiege Machines",
 	"author": "Sam Ramirez",
-	"version": (1, 2),
-	"blender": (2, 90, 0),
+	"version": (1, 5),
+	"blender": (2, 90, 1),
 	"location": "View3D > Toolbar > Besiege",
 	"description": "Imports Besiege Creation Files (.bsg) files",
 	"warning": "This addon is still being worked on",
@@ -147,7 +147,7 @@ def register():
 
 	# line type object properties
 	bpy.types.Scene.bsgimp_line_type_join_components = bpy.props.BoolProperty(name = "Join components", default=False, description="If checked, the addon will join the components of a line type block and delete the parent object")
-	bpy.types.Scene.bsgimp_line_type_hide_parent_objects = bpy.props.BoolProperty(name = "Hide parent empties", default=True, description="Hide the parent empties after importing the blocks")
+	bpy.types.Scene.bsgimp_line_type_hide_parent_objects = bpy.props.BoolProperty(name = "Hide parent empties", default=False, description="Hide the parent empties after importing the blocks")
 	bpy.types.Scene.bsgimp_line_type_brace_delete_threshold = bpy.props.FloatProperty(name = "Brace Threshold", default=0.5, description="The minimum length a brace should have before the connector and end block gets deleted")
 
 

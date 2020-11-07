@@ -1769,5 +1769,75 @@
                 }
             }
         }]
+    },
+    "9": {
+        "display_name": "Spring",
+        "code_name": "Spring",
+        "components": [{
+            "base_source": "SpringConnector",
+            "obj_source": "GAME_SKIN_DIR",
+            "group": "BASE",
+            "line_type_blocks": true,
+            "line_type_components": {
+                "start": "SpringSectionA",
+                "middle": "SpringConnector",
+                "end": "SpringSectionA"
+            },
+            "override_purge_materials": false,
+            "update_materials": [],
+            "part": "START",
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 180.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "45": {
+        "display_name": "RopeWinch",
+        "code_name": "RopeWinch",
+        "components": [{
+            "base_source": "RopeWinch",
+            "obj_source": "GAME_SKIN_DIR",
+            "group": "BASE",
+            "line_type_blocks": true,
+            "line_type_components": {
+                "start": "RopeWinchConnector",
+                "middle": "RopeWinchSection",
+                "end": "RopeWinchConnector"
+            },
+            "override_purge_materials": false,
+            "update_materials": [],
+            "part": "START",
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 180.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
     }
 }
