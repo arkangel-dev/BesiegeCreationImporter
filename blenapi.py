@@ -8,14 +8,19 @@ import random
 from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
-import Block
-import Component
-from MaterialCatalog import DefaultMaterial
-from bsgreader import Reader
-# from .bsgreader import Reader
-# from .Component import Component
-# from .Block import Block
-# from .MaterialCatalog import *
+
+dev_mode = False
+
+if dev_mode:
+	import Block
+	import Component
+	from MaterialCatalog import DefaultMaterial
+	from bsgreader import Reader
+else:
+	from .bsgreader import Reader
+	from .Component import Component
+	from .Block import Block
+	from .MaterialCatalog import *
 
 class BlenderAPI():
 	# So we are defining 3 directories. One for the workshop skin directory, one 
@@ -44,8 +49,8 @@ class BlenderAPI():
 		self.workshop_store = ws_store
 		self.game_store = game_store
 		self.backup_store = backup
-		self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
-		# self.custom_block_dir = os.path.join(bpy.utils.script_path_user(), "addons", "BesiegeCreationImportAddon", 'CustomBlocks')
+		self.custom_block_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'CustomBlocks')
+		if dev_mode: self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
 
 	def LookupObject(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
 		'''	
@@ -68,8 +73,12 @@ class BlenderAPI():
 		else:
 			# ...if we cannot find the skin we need, we'll import it
 			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template")
+			for obj in bpy.context.selected_objects: obj.select_set(False)
 			bpy.ops.import_scene.obj(filepath=model[0])
+			bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
+			bpy.ops.object.join()
 			current_obj = list(bpy.context.selected_objects)[0]
+			self.ClearExtraMaterialSlots(current_obj)
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
 			if self.setting_GenerateMaterial:
 				current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not self.setting_use_vanilla_skin else 'Template')
@@ -80,6 +89,8 @@ class BlenderAPI():
 			if (block.block_id in ['26','55']):
 				component._offset_rotation_y += 23 if block.flipped != 'True' else -23
 			# Rotate according to the offset data from the JSON file
+
+
 			current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
 			current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
 			current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
@@ -256,12 +267,16 @@ class BlenderAPI():
 		self.ResetParentTransformRotation(start, parent)
 
 		# Set the rotation of the start block
-		start.rotation_euler = block.GetLineStartRotation()
+		start_rot = Euler(block.GetLineStartRotation())
+		start_rot.rotate(block.GetGlobalMachineRotation().inverted())
+		start.rotation_euler = start_rot
 		start.rotation_mode = 'ZXY'
 		self.InvertRotation(start)
 
 		# Set the rotation of the end block
-		end.rotation_euler = block.GetLineEndRotation()
+		end_rot = Euler(block.GetLineEndRotation())
+		end_rot.rotate(block.GetGlobalMachineRotation().inverted())
+		end.rotation_euler = end_rot
 		end.rotation_mode = 'ZXY'
 		self.InvertRotation(end)
 
@@ -283,14 +298,12 @@ class BlenderAPI():
 		# the end and the connector block will be deleted. This specific value... we dont
 		# know
 
-		print(self.setting_brace_threshhold)
-
 		if distance < self.setting_brace_threshhold:
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
 
 		elif self.setting_join_line_components:
-			for obj in bpy.context.selected_objects: obj.select_set(False)
+			for obj in list(bpy.context.selected_objects): obj.select_set(False)
 			bpy.context.view_layer.objects.active = start
 			connector.select_set(True)
 			start.select_set(True)
@@ -319,6 +332,11 @@ class BlenderAPI():
 		from math import radians
 		from mathutils import Matrix
 		obj.rotation_euler = (obj.rotation_euler.to_matrix() @ Matrix.Rotation(radian, 3, axis)).to_euler()
+
+	def ClearExtraMaterialSlots(self, obj):
+		obj.active_material_index = 0
+		for x in range(len(obj.material_slots)):
+			bpy.ops.object.material_slot_remove({'object': obj})
 
 	def GetDistance(self, objs:list) -> float:
 		'''
@@ -404,8 +422,6 @@ class BlenderAPI():
 			os.path.join(self.game_store, skin_name, block_name),
 			os.path.join(self.backup_store, block_name)
 		]
-
-		print(model_dirs[0])
 		for cdir in model_dirs:
 			result_t = self.AttemptLoad(cdir, '.png')
 			result_o = self.AttemptLoad(cdir, '.obj')

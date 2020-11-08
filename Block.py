@@ -1,4 +1,5 @@
 from math import radians, pi
+from mathutils import Quaternion
 
 class Block():
 	"""
@@ -14,6 +15,11 @@ class Block():
 	code_name = ""
 	flipped = ""
 
+	machine_rotation_quart_x = 0.0
+	machine_rotation_quart_y = 0.0
+	machine_rotation_quart_z = 0.0
+	machine_rotation_quart_w = 0.0
+
 	_translate_x, _translate_y, _translate_z = [0.0, 0.0, 0.0]
 	_rotation_x, _rotation_y, _rotation_z, _rotation_w = [0.0, 0.0, 0.0, 0.0]
 	_scale_x, _scale_y, _scale_z = [0.0, 0.0, 0.0]
@@ -22,6 +28,7 @@ class Block():
 	_epx, _epy, _epz = [0,0,0]
 	_srx, _sry, _srz = [0,0,0]
 	_erx, _ery, _erz = [0,0,0]
+
 
 	def __init__(self, translation:list, rotation:list, scale:list):
 		"""
@@ -64,6 +71,13 @@ class Block():
 		return (self.Convert(self._erx), self.Convert(self._erz), self.Convert(self._ery))
 
 	def Convert(self, val):
-		# return (val * pi / 180) 
 		return radians(val)
-		# return val
+
+	def SetGlobalMachineRotation(self, x, y, z, w):
+		self.machine_rotation_quart_w = w
+		self.machine_rotation_quart_x = x
+		self.machine_rotation_quart_y = y
+		self.machine_rotation_quart_z = z
+
+	def GetGlobalMachineRotation(self):
+		return Quaternion((self.machine_rotation_quart_w, self.machine_rotation_quart_x, self.machine_rotation_quart_z, self.machine_rotation_quart_y))

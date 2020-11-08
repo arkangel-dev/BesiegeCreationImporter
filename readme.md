@@ -18,8 +18,11 @@ This is an addon for Blender to import Besiege Creations. Currently it works for
 3. When importing you'll have a few options
    - **Generate Materials:** If not checked, materials will not be generated for the block. (`To Be Implemented`)
    - **Create Parent:** If checked, all the blocks will be parented to an empty after importing
-   - **Use vanilla blocks:** If checked the addon will ignore all skin definitions from the BSG file and use the Template skin instead (`Needs fixing after speed improvement update`)
-   - **Stop import on missing skin**: If checked the addon will stop the import process and throw an exception if a skin could not be found. However if not checked, the addon will use the template skin instead of the missing skin (`To Be Implemented`)
+   - **Use vanilla blocks:** If checked the addon will ignore all skin definitions from the BSG file and use the Template skin instead
+   - **Stop import on missing skin**: If checked the addon will stop the import process and throw an exception if a skin could not be found. However if not checked, the addon will use the template skin instead of the missing skin (`To be removed`)
+   - **Join components**: This applies to line type objects. If checked, their components will be joined into a single mesh
+   - **Hide parent empties**: If checked, all empties used will be hidden
+   - **Brace Threshold**: Defines the minimum distance between the start and end point of a line type before the end point and connector gets deleted (`Needs to be tuned`)
 4. Select a BSG file with the field labelled `BSG File`
 5. Click import
 6. Hope everything imported correctly

@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "Import Besiege Machines",
 	"author": "Sam Ramirez",
-	"version": (1, 5),
+	"version": (1, 5, 1),
 	"blender": (2, 90, 1),
 	"location": "View3D > Toolbar > Besiege",
 	"description": "Imports Besiege Creation Files (.bsg) files",
@@ -10,8 +10,13 @@ bl_info = {
 	"category": "Import-Export",
 }
 
-# from . import blenapi
-import blenapi
+dev_mode = False
+
+if dev_mode:
+	import blenapi
+else:
+	from . import blenapi
+from bpy.app.handlers import persistent
 import bpy
 import xml.etree.ElementTree as ET
 import os
@@ -119,7 +124,37 @@ class SaveGlobalConfiguration(bpy.types.Operator):
 		pass
 
 	def execute(self, context):
-		pass
+		WriteGlobalConfig()
+
+
+		return({'FINISHED'})
+
+@persistent
+def ReadGlobalConfig(*_):
+	if not bpy.data.is_saved:
+		print("Reading global config...")
+		location = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.ini')
+		if dev_mode: location = "config.ini"
+		if not Path(location).is_file:
+			WriteGlobalConfig()
+		config = configparser.ConfigParser()
+		config.read(location)
+		bpy.context.scene.bsgimp_template_path = config['GamePaths']['GameFolder']
+		bpy.context.scene.bsgimp_workshop_template_path = config['GamePaths']['WorkshopFolder']
+		bpy.context.scene.bsgimp_backup_skin = config['GamePaths']['Backup']
+
+def WriteGlobalConfig():
+	print("Writing global config...")
+	config_loc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.ini')
+	if dev_mode: config_loc = "config.ini"
+	config = configparser.ConfigParser()
+	config['GamePaths'] = {}
+	config['GamePaths']['GameFolder'] = bpy.context.scene.bsgimp_template_path
+	config['GamePaths']['WorkshopFolder'] = bpy.context.scene.bsgimp_workshop_template_path
+	config['GamePaths']['Backup'] = bpy.context.scene.bsgimp_backup_skin
+	with open(config_loc, 'w') as configfile:
+		config.write(configfile)
+
   
 def register():
 	# register classes
@@ -149,11 +184,13 @@ def register():
 	bpy.types.Scene.bsgimp_line_type_join_components = bpy.props.BoolProperty(name = "Join components", default=False, description="If checked, the addon will join the components of a line type block and delete the parent object")
 	bpy.types.Scene.bsgimp_line_type_hide_parent_objects = bpy.props.BoolProperty(name = "Hide parent empties", default=False, description="Hide the parent empties after importing the blocks")
 	bpy.types.Scene.bsgimp_line_type_brace_delete_threshold = bpy.props.FloatProperty(name = "Brace Threshold", default=0.5, description="The minimum length a brace should have before the connector and end block gets deleted")
-
+	
+	bpy.app.handlers.load_post.append(ReadGlobalConfig)
 
 def unregister():
 	# unregister classes	
 	bpy.utils.unregister_class(MainPanel)
+	bpy.utils.unregister_class(SkinSettings)
 	bpy.utils.unregister_class(LineTypeObjectSettings)
 	bpy.utils.unregister_class(SettingsPanel)
 	bpy.utils.unregister_class(ImportOperator)
@@ -168,7 +205,12 @@ def unregister():
 	del bpy.types.Scene.bsgimp_generate_materials
 	del bpy.types.Scene.bsgimp_halt_missing
 	del bpy.types.Scene.bsgimp_create_parent
+	del bpy.types.Scene.bsgimp_line_type_join_components
+	del bpy.types.Scene.bsgimp_line_type_hide_parent_objects
+	del bpy.types.Scene.bsgimp_line_type_brace_delete_threshold
+	
 
 #This is required in order for the script to run in the text editor   
 if __name__ == "__main__":
-	register()  
+	register()
+	

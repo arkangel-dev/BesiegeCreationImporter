@@ -3,11 +3,16 @@ import xml.etree.ElementTree as ET
 import os
 import bpy
 
-# from .Component import Component
-# from .Block import Block
 
-from Component import Component
-from Block import Block
+
+dev_mode = False
+
+if dev_mode:
+	from Component import Component
+	from Block import Block
+else:
+	from .Component import Component
+	from .Block import Block
 
 from typing import List
 from copy import deepcopy
@@ -21,8 +26,8 @@ class Reader():
 
 	def __init__(self, src:str):
 		self.cfile = src
-		# atlas_dir = os.path.join(bpy.utils.script_path_user(), "addons", "BesiegeCreationImportAddon", 'object_transform_data_converted_v2.json')
-		atlas_dir = 'object_transform_data_converted_v2.json'
+		atlas_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'object_transform_data_converted_v2.json')
+		if dev_mode: atlas_dir = 'object_transform_data_converted_v2.json'
 		with open(atlas_dir) as json_file:
 			self.atlas = json.load(json_file)
 
@@ -36,6 +41,13 @@ class Reader():
 		total_components = 0
 		skipped_blocks = 0
 
+		global_data = self.cfile.findall("./Global/*")
+
+		global_rot_x = float(global_data[1].get('x'))
+		global_rot_y = float(global_data[1].get('y'))
+		global_rot_z = float(global_data[1].get('z'))
+		global_rot_w = float(global_data[1].get('w'))
+
 		for block in all_blocks:
 			
 			block_id = block.get('id')
@@ -45,6 +57,7 @@ class Reader():
 				continue
 
 			total_blocks += 1
+			
 
 			trans_p_x = float(block.find("Transform/Position").get('x'))
 			trans_p_y = float(block.find("Transform/Position").get('y'))
@@ -64,6 +77,8 @@ class Reader():
 				[trans_r_x, trans_r_y, trans_r_z, trans_r_w],
 				[trans_s_x, trans_s_y, trans_s_z]
 				)
+
+			current_block.SetGlobalMachineRotation(global_rot_x, global_rot_y, global_rot_z, global_rot_w)
 
 			if (block_id in ['26', '55']):
 				for key in block.find("Data").getchildren():
