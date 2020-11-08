@@ -5,7 +5,7 @@ import bpy
 
 
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	from Component import Component
@@ -86,6 +86,8 @@ class Reader():
 						current_block.flipped = key.text
 
 			if (block_id in ['7','9','45']):
+
+				sp, ep, sr, er = ('0','0','0'), ('0','0','0'), ('0','0','0'), ('0','0','0')
 				for key in block.find("Data").getchildren():
 					if key.get('key').__eq__('start-position'): sp = [key.find('X').text, key.find('Y').text, key.find('Z').text]
 					if key.get('key').__eq__('end-position'): ep = [key.find('X').text, key.find('Y').text, key.find('Z').text]

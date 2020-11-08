@@ -10,7 +10,7 @@ bl_info = {
 	"category": "Import-Export",
 }
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	import blenapi
@@ -20,9 +20,9 @@ from bpy.app.handlers import persistent
 import bpy
 import xml.etree.ElementTree as ET
 import os
-import json
+import traceback
 import configparser
-import threading
+import time
 from pathlib import Path
 
 	#This is the Main Panel (Parent of Panel A and B)
@@ -104,15 +104,21 @@ class ImportOperator(bpy.types.Operator):
 			context.scene.bsgimp_backup_skin
 		)
 
-		self.importer.ImportCreation(
-			bpy.path.abspath(context.scene.bsgimp_bsg_path), 
-			vanilla_skins=context.scene.bsgimp_use_vanilla_blocks,
-			create_parent=context.scene.bsgimp_create_parent,
-			join_line_components=context.scene.bsgimp_line_type_join_components,
-			generate_material=context.scene.bsgimp_generate_materials,
-			bracethreshold=context.scene.bsgimp_line_type_brace_delete_threshold
-
-		)
+		try:
+			st_t = time.time()
+			self.importer.ImportCreation(
+				bpy.path.abspath(context.scene.bsgimp_bsg_path), 
+				vanilla_skins=context.scene.bsgimp_use_vanilla_blocks,
+				create_parent=context.scene.bsgimp_create_parent,
+				join_line_components=context.scene.bsgimp_line_type_join_components,
+				generate_material=context.scene.bsgimp_generate_materials,
+				bracethreshold=context.scene.bsgimp_line_type_brace_delete_threshold
+			)
+			et_t = time.time()
+			self.report({'INFO'}, "Import complete in {:.2f} seconds".format((et_t - st_t)))
+		except:
+			self.report({'ERROR'}, "Error encountered in the import process. Check console")
+			traceback.print_exc() 
 		return({'FINISHED'})
 
 class SaveGlobalConfiguration(bpy.types.Operator):

@@ -9,7 +9,7 @@ from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	import Block
@@ -170,6 +170,7 @@ class BlenderAPI():
 		for block in self.temp_obj_list:
 			bpy.data.objects.remove(block)
 		self.temp_obj_list.clear()
+		
 
 	def ImportCustomModel(self, block_name:str) -> 'Object':
 		'''
@@ -243,7 +244,7 @@ class BlenderAPI():
 		# and connector block to the empty object
 		start.parent = parent
 		end.parent = parent
-		connector.parent = parent
+		
 
 
 		# Set the rotation of the parent, So it'll
@@ -255,7 +256,7 @@ class BlenderAPI():
 		# Set the name of the blocks. We'll be
 		# using the GUID in the name so it'll be
 		# easier to debug
-		parent.name = "Brace_" + block.guid
+		parent.name = "LineType_" + block.guid
 		start.name = "StartPoint_" + block.guid
 		end.name = "EndPoint_" + block.guid
 		connector.name = "Connector_" + block.guid
@@ -287,6 +288,8 @@ class BlenderAPI():
 		# We'll be using a Track-To contraint to point the start block at the end block.
 		# So here we'll be creating the contraint and configuring it to point at the end
 		# block
+		connector.parent = parent
+		self.ResetParentTransformRotation(connector, parent)
 		constraint = connector.constraints.new('TRACK_TO')
 		constraint.track_axis = "TRACK_Y"
 		constraint.up_axis = "UP_X"
@@ -315,12 +318,15 @@ class BlenderAPI():
 		return parent
 
 	def ResetParentTransformRotation(self, obj, parent):
-		bpy.context.view_layer.update()
-		ogloc = (obj.matrix_world.to_translation().x, obj.matrix_world.to_translation().y, obj.matrix_world.to_translation().z)
-		obj.parent = None
-		obj.location = Vector(ogloc)
-		obj.parent = parent
-		obj.matrix_parent_inverse = parent.matrix_world.inverted()
+		try:
+			bpy.context.view_layer.update()
+			ogloc = (obj.matrix_world.to_translation().x, obj.matrix_world.to_translation().y, obj.matrix_world.to_translation().z)
+			obj.parent = None
+			obj.location = Vector(ogloc)
+			obj.parent = parent
+			obj.matrix_parent_inverse = parent.matrix_world.inverted()
+		except ValueError:
+			print("Warning : ResetParentTransformRotation threw ValueError exception with obj {}".format(obj.name))
 
 	def InvertRotation(self, obj):
 		original_rot = obj.rotation_mode
