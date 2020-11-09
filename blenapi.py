@@ -3,6 +3,7 @@ import os
 import numpy as np
 import math
 import json
+import time
 import xml.etree.ElementTree as ET
 import random
 from mathutils import Euler, Quaternion, Vector, Matrix
@@ -34,6 +35,7 @@ class BlenderAPI():
 	custom_block_dir = ""
 	status_description = []
 	temp_obj_list = []
+	block_list = []
 	import_object_list = {}
 	custom_import_object_list = {}
 
@@ -43,6 +45,8 @@ class BlenderAPI():
 	setting_hide_parent_empties = False
 	setting_brace_threshhold = 0.5
 	setting_clean_up_action = 'DO_NOTHING'
+
+
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
@@ -106,7 +110,16 @@ class BlenderAPI():
 			self.import_object_list.update(skin_data_template)
 			return newobj
 
-	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False, generate_material=True, line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+	def ReadMachine(self, path:str):
+		ReaderInstance = Reader(path)
+		st_t = time.time()
+		data = ReaderInstance.ReadBlockData()
+		self.block_list = data['RETURN_LIST']
+		et_t = time.time()
+		print('Read complete in {}'.format(et_t - st_t))
+		return data
+
+	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -131,11 +144,10 @@ class BlenderAPI():
 
 		# Create a reader instance. This class is used to read the data from the BSG file and
 		# create a list of Block classes
-		ReaderInstance = Reader(path)
-		block_list = ReaderInstance.ReadBlockData()
+		
 		imported_list = []
 
-		print("Importing {} blocks...".format(len(block_list)))
+		print("Importing {} blocks...".format(len(self.block_list)))
 
 		# These lists will be used to find objects that were imported to
 		# parent them to an empty object once the import process has been
@@ -145,7 +157,7 @@ class BlenderAPI():
 
 		# Catagorize all the blocks. We separate them by their draw type.
 		# Some objects will have to "drawn" differently than others.
-		for block in block_list:
+		for block in self.block_list:
 			if block.block_id in ['7','9','45']:
 				line_draw.append(block)
 			else:
