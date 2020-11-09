@@ -38,11 +38,11 @@ class BlenderAPI():
 	custom_import_object_list = {}
 
 	setting_GenerateMaterial = False
-	setting_StopImportOnMissingskin = False
 	setting_use_vanilla_skin = False
 	setting_join_line_components = False
 	setting_hide_parent_empties = False
 	setting_brace_threshhold = 0.5
+	setting_clean_up_action = 'DO_NOTHING'
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
@@ -106,7 +106,7 @@ class BlenderAPI():
 			self.import_object_list.update(skin_data_template)
 			return newobj
 
-	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False, generate_material=True, stop_import_on_missing_skin=False, join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False, generate_material=True, line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -118,11 +118,11 @@ class BlenderAPI():
 		'''
 
 		self.setting_GenerateMaterial = generate_material
-		self.setting_StopImportOnMissingskin = stop_import_on_missing_skin
 		self.setting_join_line_components = join_line_components
 		self.setting_hide_parent_empties = hide_parent_empties
 		self.setting_brace_threshhold = bracethreshold
 		self.setting_use_vanilla_skin = vanilla_skins
+		self.setting_clean_up_action = line_type_cleanup
 
 		# First we'll reset the object history because if we imported a model before this cycle,
 		# the import model methods will try to duplicate objects that does not exist
@@ -305,17 +305,56 @@ class BlenderAPI():
 			bpy.data.objects.remove(connector)
 			bpy.data.objects.remove(end)
 
-		elif self.setting_join_line_components:
+		if self.setting_join_line_components:
 			for obj in list(bpy.context.selected_objects): obj.select_set(False)
 			bpy.context.view_layer.objects.active = start
-			connector.select_set(True)
-			start.select_set(True)
-			end.select_set(True)
-			bpy.ops.object.join()
 
-		if self.setting_hide_parent_empties: parent.hide_set(True)
-		
+			start.select_set(True)
+			if not distance < self.setting_brace_threshhold:
+				connector.select_set(True)
+				end.select_set(True)
+				bpy.ops.object.join()
+			current_obj = bpy.context.selected_objects[0]
+
+			if self.setting_clean_up_action == 'DELETE_EMPTIES':
+				self.UnparentKeepTransform(current_obj)
+				bpy.data.objects.remove(parent)
+			elif self.setting_clean_up_action == 'HIDE_EMPTIES':
+				parent.hide_set(True)
 		return parent
+	
+	def UnparentKeepTransform(self, ob):
+		# So turns out blender doesn't support shearing... so whatever its called...
+		# That's why this code was copied from https://blender.stackexchange.com/questions/154848/clear-parent-and-keep-transformation
+		# I have no idea how it works. But it works. not my proudest moment
+		mat = ob.matrix_world
+		for obj in list(bpy.context.selected_objects): obj.select_set(False)
+		bpy.context.view_layer.objects.active = ob
+		ob.select_set(True)
+
+		loc, rot, sca = mat.decompose()
+
+		mat_loc = Matrix.Translation(loc)
+		mat_rot = rot.to_matrix().to_4x4()
+		mat_sca = Matrix.Identity(4)
+		mat_sca[0][0], mat_sca[1][1], mat_sca[2][2] = sca
+
+		mat_out = mat_loc @ mat_rot @ mat_sca
+		mat_h = mat_out.inverted() @ mat
+
+		# Unparent the object.
+		bpy.ops.object.parent_clear(type='CLEAR_KEEP_TRANSFORM')
+
+		# Move the vertices to their original position,
+		# which the mat_out can't represent.
+		for v in ob.data.vertices:
+			v.co = mat_h @ v.co
+
+	# def UnparentKeepTransform(self, obj):
+	# 	parent = obj.parent
+	# 	obj.parent = None
+	# 	obj.matrix_world = obj.matrix_world @ parent.matrix_world
+
 
 	def ResetParentTransformRotation(self, obj, parent):
 		try:
@@ -341,7 +380,7 @@ class BlenderAPI():
 
 	def ClearExtraMaterialSlots(self, obj):
 		obj.active_material_index = 0
-		for x in range(len(obj.material_slots)):
+		for _ in range(len(obj.material_slots)):
 			bpy.ops.object.material_slot_remove({'object': obj})
 
 	def GetDistance(self, objs:list) -> float:

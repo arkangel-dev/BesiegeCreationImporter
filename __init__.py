@@ -66,11 +66,16 @@ class LineTypeObjectSettings(bpy.types.Panel):
 	bl_parent_id = "PT_MainPanel"
 	bl_options = {'DEFAULT_CLOSED'}
 
+
+
 	def draw(self, context):
 		layout = self.layout
-		layout.row().prop(context.scene, 'bsgimp_line_type_join_components')
-		layout.row().prop(context.scene, 'bsgimp_line_type_hide_parent_objects')
 		layout.row().prop(context.scene, 'bsgimp_line_type_brace_delete_threshold')
+		layout.row().prop(context.scene, 'bsgimp_line_type_join_components')
+		cleanup_row = layout.row()
+		cleanup_row.prop(context.scene, 'bsgimp_line_type_cleanup_options')
+		cleanup_row.enabled = context.scene.bsgimp_line_type_join_components
+
 
 class SkinSettings(bpy.types.Panel):
 	bl_label = "Skin Settings"
@@ -85,7 +90,6 @@ class SkinSettings(bpy.types.Panel):
 		layout = self.layout
 		layout.row().prop(context.scene, 'bsgimp_generate_materials')
 		layout.row().prop(context.scene, 'bsgimp_use_vanilla_blocks')
-		layout.row().prop(context.scene, 'bsgimp_halt_missing')
 
 class ImportOperator(bpy.types.Operator):
 	"""Import the selected besiege file"""
@@ -112,7 +116,8 @@ class ImportOperator(bpy.types.Operator):
 				create_parent=context.scene.bsgimp_create_parent,
 				join_line_components=context.scene.bsgimp_line_type_join_components,
 				generate_material=context.scene.bsgimp_generate_materials,
-				bracethreshold=context.scene.bsgimp_line_type_brace_delete_threshold
+				bracethreshold=context.scene.bsgimp_line_type_brace_delete_threshold,
+				line_type_cleanup=context.scene.bsgimp_line_type_cleanup_options
 			)
 			et_t = time.time()
 			self.report({'INFO'}, "Import complete in {:.2f} seconds".format((et_t - st_t)))
@@ -183,14 +188,19 @@ def register():
 	# properties
 	bpy.types.Scene.bsgimp_use_vanilla_blocks = bpy.props.BoolProperty(name = "Use vanilla blocks", default=False, description = "Ignore BSG file skin data and use vanilla blocks")
 	bpy.types.Scene.bsgimp_generate_materials = bpy.props.BoolProperty(name = "Generate materials", default=True, description = "Generate node material for each type of block")
-	bpy.types.Scene.bsgimp_halt_missing = bpy.props.BoolProperty(name = "Stop import on missing skin", default=False, description = "Stop the import process if a specific skin could not be found")
 	bpy.types.Scene.bsgimp_create_parent = bpy.props.BoolProperty(name = "Create parent", default=False, description = "Create a boundbox around creation and parent all blocks to it")
 
 	# line type object properties
-	bpy.types.Scene.bsgimp_line_type_join_components = bpy.props.BoolProperty(name = "Join components", default=False, description="If checked, the addon will join the components of a line type block and delete the parent object")
-	bpy.types.Scene.bsgimp_line_type_hide_parent_objects = bpy.props.BoolProperty(name = "Hide parent empties", default=False, description="Hide the parent empties after importing the blocks")
-	bpy.types.Scene.bsgimp_line_type_brace_delete_threshold = bpy.props.FloatProperty(name = "Brace Threshold", default=0.5, description="The minimum length a brace should have before the connector and end block gets deleted")
-	
+	bpy.types.Scene.bsgimp_line_type_join_components = bpy.props.BoolProperty(name = "Join components", default=True, description="If checked, the addon will join the components of a line type block")
+	bpy.types.Scene.bsgimp_line_type_brace_delete_threshold = bpy.props.FloatProperty(name = "Delete Threshold", default=0.5, description="The minimum length a line type block should be before the connector and end block gets deleted")
+	bpy.types.Scene.bsgimp_line_type_cleanup_options = bpy.props.EnumProperty(
+		name='Cleanup Action',
+		items=(
+			('DELETE_EMPTIES', 'Delete Empties', 'Delete empties after joining line type blocks'),
+			('HIDE_EMPTIES', 'Hide empties', 'Hide empties after joining line type blocks'),
+			('DO_NOTHING', 'Do Nothing', 'Do absolutely nothing')
+		)
+	)
 	bpy.app.handlers.load_post.append(ReadGlobalConfig)
 
 def unregister():
@@ -209,10 +219,8 @@ def unregister():
 	del bpy.types.Scene.bsgimp_backup_skin
 	del bpy.types.Scene.bsgimp_use_vanilla_blocks
 	del bpy.types.Scene.bsgimp_generate_materials
-	del bpy.types.Scene.bsgimp_halt_missing
 	del bpy.types.Scene.bsgimp_create_parent
 	del bpy.types.Scene.bsgimp_line_type_join_components
-	del bpy.types.Scene.bsgimp_line_type_hide_parent_objects
 	del bpy.types.Scene.bsgimp_line_type_brace_delete_threshold
 	
 
