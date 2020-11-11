@@ -1680,10 +1680,10 @@
         }]
     },
     "69": {
-        "display_name": "LogicGate",
-        "code_name": "LogicGate",
+        "display_name": "Anglometer",
+        "code_name": "Anglometer",
         "components": [{
-            "base_source": "LogicGate",
+            "base_source": "Anglometer",
             "group": "BASE",
             "line_type_blocks": false,
             "override_purge_materials": false,
@@ -1692,17 +1692,17 @@
                 "position": {
                     "x": 0.0,
                     "y": 0.0,
-                    "z": 0.28
+                    "z": 0.123
                 },
                 "rotation": {
-                    "x": 0.0,
-                    "y": 270.0,
-                    "z": 270.0
+                    "x": 90.0,
+                    "y": 0.0,
+                    "z": 0.0
                 },
                 "scale": {
-                    "x": 0.7836234,
-                    "y": 0.7836234,
-                    "z": 0.7836234
+                    "x": 0.2368702,
+                    "y": 0.2368702,
+                    "z": 0.2368702
                 }
             }
         }]
@@ -1731,6 +1731,34 @@
                     "x": 0.3629585,
                     "y": 0.3629585,
                     "z": 0.3629585
+                }
+            }
+        }]
+    },
+    "68": {
+        "display_name": "LogicGate",
+        "code_name": "LogicGate",
+        "components": [{
+            "base_source": "LogicGate",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.28
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 90.0,
+                    "z": 90.0
+                },
+                "scale": {
+                    "x": 0.7836234,
+                    "y": 0.7836234,
+                    "z": 0.7836234
                 }
             }
         }]

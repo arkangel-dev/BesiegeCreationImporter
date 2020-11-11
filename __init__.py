@@ -105,25 +105,31 @@ class SkinSettings(bpy.types.Panel):
 
 	def draw(self, context):
 		layout = self.layout
-		layout.row().prop(context.scene, 'bsgimp_generate_materials')
 		layout.row().prop(context.scene, 'bsgimp_use_vanilla_blocks')
-		layout.row().prop(context.scene, 'bsgimp_use_node_group')
-		layout.row().prop(context.scene, 'bsgimp_node_set')
-		layout.row().prop(context.scene, 'bsgimp_make_unique_node_groups')
+		layout.row().prop(context.scene, 'bsgimp_generate_materials')
+ 
+		bsgimp_use_node_group_row = layout.row()
+		bsg_imp_node_set_row = layout.row()
+
+		bsgimp_use_node_group_row.prop(context.scene, 'bsgimp_use_node_group')
+		bsg_imp_node_set_row.prop(context.scene, 'bsgimp_node_set')
+		bsgimp_make_unique_node_groups_row.prop(context.scene, 'bsgimp_make_unique_node_groups')
+
+		bsgimp_use_node_group_row.enabled = context.scene.bsgimp_generate_materials
+		# bsg_imp_node_set_row.enabled = bsgimp_make_unique_node_groups_row.enabled = bsgimp_use_node_group_row.enabled = 
+		bsg_imp_node_set_row.enabled = bsgimp_make_unique_node_groups_row.enabled = context.scene.bsgimp_generate_materials and context.scene.bsgimp_use_node_group
+		
+
 
 class ImportOperator(bpy.types.Operator):
 	'''Import the selected besiege file'''
 	bl_idname = 'mesh.importoperator'
 	bl_label = 'Simple Object Operator'
 
-	
-
 	def __init__(self):
 		pass
 
 	def execute(self, context):
-
-
 		try:
 			st_t = time.time()
 			GlobalData.importer.ImportCreation(
