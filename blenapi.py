@@ -3,6 +3,7 @@ import os
 import numpy as np
 import math
 import json
+import time
 import xml.etree.ElementTree as ET
 import random
 from mathutils import Euler, Quaternion, Vector, Matrix
@@ -14,13 +15,13 @@ dev_mode = True
 if dev_mode:
 	import Block
 	import Component
-	from MaterialCatalog import DefaultMaterial
+	from MaterialCatalog import MaterialList, NodeGroups
 	from bsgreader import Reader
 else:
 	from .bsgreader import Reader
 	from .Component import Component
 	from .Block import Block
-	from .MaterialCatalog import *
+	from .MaterialCatalog import MaterialList, NodeGroups
 
 class BlenderAPI():
 	# So we are defining 3 directories. One for the workshop skin directory, one 
@@ -34,6 +35,8 @@ class BlenderAPI():
 	custom_block_dir = ""
 	status_description = []
 	temp_obj_list = []
+	block_list = []
+	imported_materials = []
 	import_object_list = {}
 	custom_import_object_list = {}
 
@@ -41,8 +44,14 @@ class BlenderAPI():
 	setting_use_vanilla_skin = False
 	setting_join_line_components = False
 	setting_hide_parent_empties = False
+	setting_use_node_groups = False
 	setting_brace_threshhold = 0.5
 	setting_clean_up_action = 'DO_NOTHING'
+	setting_grouping_mode = 'SAME_CONFIG'
+	setting_node_setup = 'PRINCIPLED_BDSF'
+	
+
+
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
@@ -51,6 +60,79 @@ class BlenderAPI():
 		self.backup_store = backup
 		self.custom_block_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'CustomBlocks')
 		if dev_mode: self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
+
+	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, use_node_groups=False, node_grouping_mode='SAME_CONFIG', node_group_setup='PRINCIPLED_BDSF', line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+		'''
+		Import a Besiege Creation File (bsg file).
+		Parameters
+			path : string : Path to the bsg file
+			vanilla_skins : bool : Use vanilla skins instead of the skins defined in the bsg file
+			create_parent : Parent all imported objects to an empty after importing them
+		Return : None
+		Exceptions : None
+		'''
+
+		self.setting_GenerateMaterial = generate_material
+		self.setting_join_line_components = join_line_components
+		self.setting_hide_parent_empties = hide_parent_empties
+		self.setting_brace_threshhold = bracethreshold
+		self.setting_use_vanilla_skin = vanilla_skins
+		self.setting_clean_up_action = line_type_cleanup
+		self.setting_use_node_groups = use_node_groups
+		self.setting_grouping_mode = node_grouping_mode
+		self.setting_node_setup = node_group_setup
+
+		# First we'll reset the object history because if we imported a model before this cycle,
+		# the import model methods will try to duplicate objects that does not exist
+		self.import_object_list = {}
+		self.custom_import_object_list = {}
+		self.imported_materials = []
+
+		# Create a reader instance. This class is used to read the data from the BSG file and
+		# create a list of Block classes
+		
+		imported_list = []
+
+		print("Importing {} blocks...".format(len(self.block_list)))
+
+		# These lists will be used to find objects that were imported to
+		# parent them to an empty object once the import process has been
+		# completed
+		normal_draw = []
+		line_draw = []
+
+		# Catagorize all the blocks. We separate them by their draw type.
+		# Some objects will have to "drawn" differently than others.
+		for block in self.block_list:
+			if block.block_id in ['7','9','45']:
+				line_draw.append(block)
+			else:
+				normal_draw.append(block)
+
+		# This is for drawing "normal type blocks". These blocks have to be simply imported
+		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
+		for block in normal_draw:
+			for component in block.components:
+				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
+		
+		# This is for drawing "line type blocks". These blocks are a bit more complicated. These blocks
+		# have a position and rotation for start and end blocks. These blocks are positioned and rotated.
+		# But due to fact people use exploit this to warp blocks, its a fucking nightmare to get it to work
+		for block in line_draw:
+			for component in block.components:
+				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))	
+
+		# There is also the "surface type block". But we dont speak of that... (╬▔皿▔)╯	
+		
+		# Then we get rid of the temp objects because we no longer need them :)
+		for block in self.temp_obj_list:
+			bpy.data.objects.remove(block)
+		self.temp_obj_list.clear()
+		return {
+			'imported_materials' : self.imported_materials,
+			'imported_objects' : imported_list
+		}
+		
 
 	def LookupObject(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
 		'''	
@@ -78,8 +160,8 @@ class BlenderAPI():
 			bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
 			bpy.ops.object.join()
 			current_obj = list(bpy.context.selected_objects)[0]
-			self.ClearExtraMaterialSlots(current_obj)
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
+			self.ClearExtraMaterialSlots(current_obj)
 			if self.setting_GenerateMaterial:
 				current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not self.setting_use_vanilla_skin else 'Template')
 			# Set the offset scale data from the JSON file
@@ -106,71 +188,16 @@ class BlenderAPI():
 			self.import_object_list.update(skin_data_template)
 			return newobj
 
-	def ImportCreation(self, path:str, vanilla_skins=False, create_parent=False, generate_material=True, line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
-		'''
-		Import a Besiege Creation File (bsg file).
-		Parameters
-			path : string : Path to the bsg file
-			vanilla_skins : bool : Use vanilla skins instead of the skins defined in the bsg file
-			create_parent : Parent all imported objects to an empty after importing them
-		Return : None
-		Exceptions : None
-		'''
-
-		self.setting_GenerateMaterial = generate_material
-		self.setting_join_line_components = join_line_components
-		self.setting_hide_parent_empties = hide_parent_empties
-		self.setting_brace_threshhold = bracethreshold
-		self.setting_use_vanilla_skin = vanilla_skins
-		self.setting_clean_up_action = line_type_cleanup
-
-		# First we'll reset the object history because if we imported a model before this cycle,
-		# the import model methods will try to duplicate objects that does not exist
-		self.import_object_list = {}
-		self.custom_import_object_list = {}
-
-		# Create a reader instance. This class is used to read the data from the BSG file and
-		# create a list of Block classes
+	def ReadMachine(self, path:str):
 		ReaderInstance = Reader(path)
-		block_list = ReaderInstance.ReadBlockData()
-		imported_list = []
+		st_t = time.time()
+		data = ReaderInstance.ReadBlockData()
+		self.block_list = data['RETURN_LIST']
+		et_t = time.time()
+		print('Read complete in {}'.format(et_t - st_t))
+		return data
 
-		print("Importing {} blocks...".format(len(block_list)))
 
-		# These lists will be used to find objects that were imported to
-		# parent them to an empty object once the import process has been
-		# completed
-		normal_draw = []
-		line_draw = []
-
-		# Catagorize all the blocks. We separate them by their draw type.
-		# Some objects will have to "drawn" differently than others.
-		for block in block_list:
-			if block.block_id in ['7','9','45']:
-				line_draw.append(block)
-			else:
-				normal_draw.append(block)
-
-		# This is for drawing "normal type blocks". These blocks have to be simply imported
-		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
-		for block in normal_draw:
-			for component in block.components:
-				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
-		
-		# This is for drawing "line type blocks". These blocks are a bit more complicated. These blocks
-		# have a position and rotation for start and end blocks. These blocks are positioned and rotated.
-		# But due to fact people use exploit this to warp blocks, its a fucking nightmare to get it to work
-		for block in line_draw:
-			for component in block.components:
-				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))	
-
-		# There is also the "surface type block". But we dont speak of that... (╬▔皿▔)╯	
-		
-		# Then we get rid of the temp objects because we no longer need them :)
-		for block in self.temp_obj_list:
-			bpy.data.objects.remove(block)
-		self.temp_obj_list.clear()
-		
 
 	def ImportCustomModel(self, block_name:str) -> 'Object':
 		'''
@@ -188,6 +215,7 @@ class BlenderAPI():
 			bpy.ops.import_scene.obj(filepath=dir_path)
 			block = list(bpy.context.selected_objects)[0]
 			block.name = str(hash(block.name))
+			[bpy.data.materials.remove(m) for m in block.data.materials]
 			clone = block.copy()
 			clone.data = block.data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
@@ -239,13 +267,10 @@ class BlenderAPI():
 		connector.location = Vector(block.GetLineStartPosition())
 		parent.location = Vector((block.getVectorPosition()))
 		
-
 		# Set parents of the start, end
 		# and connector block to the empty object
 		start.parent = parent
 		end.parent = parent
-		
-
 
 		# Set the rotation of the parent, So it'll
 		# transforming the other child blocks as well
@@ -321,6 +346,7 @@ class BlenderAPI():
 				bpy.data.objects.remove(parent)
 			elif self.setting_clean_up_action == 'HIDE_EMPTIES':
 				parent.hide_set(True)
+			return current_obj
 		return parent
 	
 	def UnparentKeepTransform(self, ob):
@@ -331,14 +357,11 @@ class BlenderAPI():
 		for obj in list(bpy.context.selected_objects): obj.select_set(False)
 		bpy.context.view_layer.objects.active = ob
 		ob.select_set(True)
-
 		loc, rot, sca = mat.decompose()
-
 		mat_loc = Matrix.Translation(loc)
 		mat_rot = rot.to_matrix().to_4x4()
 		mat_sca = Matrix.Identity(4)
 		mat_sca[0][0], mat_sca[1][1], mat_sca[2][2] = sca
-
 		mat_out = mat_loc @ mat_rot @ mat_sca
 		mat_h = mat_out.inverted() @ mat
 
@@ -510,4 +533,18 @@ class BlenderAPI():
 		mat_name = block.base_source + skin_name + "Material"
 		for m in bpy.data.materials:
 			if str(mat_name).__eq__(str(m.name)): return m
-		return DefaultMaterial(block, texture_path, mat_name).Generate()
+		
+		if self.setting_use_node_groups:
+			if self.setting_grouping_mode.__eq__('SAME_CONFIG'):
+				node_group = None
+				try:
+					node_group = bpy.data.node_groups['GlobalConfigNodeSetup'] 
+				except KeyError:
+					node_group = NodeGroups().SimplePrincipledBDSF(name='GlobalConfigNodeSetup')
+				final_m = MaterialList().NodeGroupMaterial(block, texture_path, mat_name, node_group)
+				self.imported_materials.append(final_m)
+				return final_m
+		else:
+			final_m = MaterialList().DefaultMaterial(block, texture_path, mat_name)
+			self.imported_materials.append(final_m)
+			return final_m
