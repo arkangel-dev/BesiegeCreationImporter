@@ -5,7 +5,7 @@ import bpy
 
 
 
-dev_mode = True
+dev_mode = False
 
 if dev_mode:
 	from Component import Component
