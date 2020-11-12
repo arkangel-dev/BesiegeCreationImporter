@@ -1,7 +1,7 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 5, 1),
+	'version': (1, 6, 0),
 	'blender': (2, 90, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
@@ -10,7 +10,7 @@ bl_info = {
 	'category': 'Import-Export',
 }
 
-dev_mode = True
+dev_mode = False
 
 if dev_mode:
 	import blenapi
