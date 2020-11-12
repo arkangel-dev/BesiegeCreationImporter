@@ -43,7 +43,6 @@ class MainPanel(bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 		layout.scale_x = 2
-		layout.row().prop(context.scene, 'bsgimp_create_parent')
 		layout.row().prop(context.scene, 'bsgimp_bsg_path', icon='FILE')
 		if bool(GlobalData.result_data):
 			if not GlobalData.result_data['FAILED']:
@@ -57,6 +56,18 @@ class MainPanel(bpy.types.Panel):
 			importer_row.operator('mesh.importoperator', text = 'Import')
 			importer_row.enabled = not GlobalData.result_data['FAILED']
 
+class GeneralSettings(bpy.types.Panel):
+	bl_label = 'General Settings'
+	bl_idname = 'PT_GeneralSettingsPanel'
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'UI'
+	bl_parent_id = 'PT_MainPanel'
+	bl_options = {'DEFAULT_CLOSED'}
+
+	def draw(self, context):
+		layout = self.layout
+		layout.row().prop(context.scene, 'bsgimp_create_parent')
+		layout.row().operator('obj.selectimported', text = 'Select Imported')
 
 class SettingsPanel(bpy.types.Panel):
 	bl_label = 'Addon Settings'
@@ -110,21 +121,25 @@ class SkinSettings(bpy.types.Panel):
  
 		bsgimp_use_node_group_row = layout.row()
 		bsg_imp_node_set_row = layout.row()
+		bsgimp_make_unique_node_groups_row = layout.row()
 
 		bsgimp_use_node_group_row.prop(context.scene, 'bsgimp_use_node_group')
-		bsg_imp_node_set_row.prop(context.scene, 'bsgimp_node_set')
-		bsgimp_make_unique_node_groups_row.prop(context.scene, 'bsgimp_make_unique_node_groups')
+		layout.row().operator('materials.purgematerials', text = 'Purge Materials', icon='CANCEL')
 
 		bsgimp_use_node_group_row.enabled = context.scene.bsgimp_generate_materials
-		# bsg_imp_node_set_row.enabled = bsgimp_make_unique_node_groups_row.enabled = bsgimp_use_node_group_row.enabled = 
 		bsg_imp_node_set_row.enabled = bsgimp_make_unique_node_groups_row.enabled = context.scene.bsgimp_generate_materials and context.scene.bsgimp_use_node_group
 		
 
+class PurgeableMaterialList(bpy.types.PropertyGroup):
+	obj_pointer = bpy.props.PointerProperty(name="ObjPointer", type=bpy.types.Material)
+
+class SelectableImportedObjectList(bpy.types.PropertyGroup):
+	obj_pointer = bpy.props.PointerProperty(name="ObjPointer", type=bpy.types.Object)
 
 class ImportOperator(bpy.types.Operator):
 	'''Import the selected besiege file'''
 	bl_idname = 'mesh.importoperator'
-	bl_label = 'Simple Object Operator'
+	bl_label = 'Import Creation'
 
 	def __init__(self):
 		pass
@@ -132,19 +147,71 @@ class ImportOperator(bpy.types.Operator):
 	def execute(self, context):
 		try:
 			st_t = time.time()
-			GlobalData.importer.ImportCreation(
+			return_data = GlobalData.importer.ImportCreation(
 				vanilla_skins=context.scene.bsgimp_use_vanilla_blocks,
 				create_parent=context.scene.bsgimp_create_parent,
 				join_line_components=context.scene.bsgimp_line_type_join_components,
 				generate_material=context.scene.bsgimp_generate_materials,
 				bracethreshold=context.scene.bsgimp_line_type_brace_delete_threshold,
-				line_type_cleanup=context.scene.bsgimp_line_type_cleanup_options
+				line_type_cleanup=context.scene.bsgimp_line_type_cleanup_options,
+				node_grouping_mode=context.scene.bsgimp_make_unique_node_groups,
+				use_node_groups=context.scene.bsgimp_use_node_group,
+				node_group_setup=context.scene.bsgimp_node_set
+				
 			)
 			et_t = time.time()
+			for material in return_data['imported_materials']:
+				newmat = bpy.context.scene.bsgimp_purgeable_materials.add()
+				newmat.obj_pointer = material
+
+			for object_imp in return_data['imported_objects']:
+				try:
+					newobj = bpy.context.scene.bsgimp_selectable_imports.add()
+					# newobj.name = object_imp.name
+					newobj.obj_pointer = object_imp
+					# print(object_imp)
+					# object_imp.select_set(True)
+				except:
+					pass
+
 			self.report({'INFO'}, 'Import complete in {:.2f} seconds'.format((et_t - st_t)))
 		except:
 			self.report({'ERROR'}, 'Error encountered in the import process. Check console')
 			traceback.print_exc() 
+		return({'FINISHED'})
+
+class PurgeMaterials(bpy.types.Operator):
+	bl_idname = 'materials.purgematerials'
+	bl_label = 'Purge Materials'
+
+	def __init__(self):
+		pass
+
+	def execute(self, context):
+		count = 0
+		for material in bpy.context.scene.bsgimp_purgeable_materials:
+			try:
+				bpy.data.materials.remove(material.obj_pointer)
+				print("Purged {}...".format(material))
+				count += 1
+			except:
+				pass
+		self.report({'INFO'}, "{} materials purged".format(count))
+		return({'FINISHED'})
+
+class SelectImportedObjects(bpy.types.Operator):
+	bl_idname = 'obj.selectimported'
+	bl_label = 'Select Imported Besiege Blocks'
+
+	def __init__(self):
+		pass
+
+	def execute(self, context):
+		for object_imp in bpy.context.scene.bsgimp_selectable_imports:
+			try:
+				object_imp.obj_pointer.select_set(True)
+			except:
+				pass
 		return({'FINISHED'})
 
 class SaveGlobalConfiguration(bpy.types.Operator):
@@ -157,8 +224,6 @@ class SaveGlobalConfiguration(bpy.types.Operator):
 
 	def execute(self, context):
 		WriteGlobalConfig()
-
-
 		return({'FINISHED'})
 
 @persistent
@@ -201,12 +266,16 @@ def register():
 
 	# register classes
 	bpy.utils.register_class(MainPanel)
+	bpy.utils.register_class(GeneralSettings)
 	bpy.utils.register_class(SkinSettings)
 	bpy.utils.register_class(LineTypeObjectSettings)
 	bpy.utils.register_class(SettingsPanel)
 	bpy.utils.register_class(SaveGlobalConfiguration)
 	bpy.utils.register_class(ImportOperator)
-	
+	bpy.utils.register_class(PurgeMaterials)
+	bpy.utils.register_class(PurgeableMaterialList)
+	bpy.utils.register_class(SelectableImportedObjectList)
+	bpy.utils.register_class(SelectImportedObjects)
 	
 	# register properties
 	# paths
@@ -225,7 +294,8 @@ def register():
 		name='Node Setup',
 		items=(
 			('PRINCIPLED_BDSF', 'Principled BDSF', 'Simple Principled BDSF Setup'),
-			('DIFFUSE_GLOSSY_MIX', 'Diffuse Glossy Mix BDSF', 'Simple node setup with Diffuse BDSF mixed with Glossy BDSF')
+			('DIFFUSE_GLOSSY_MIX', 'Diffuse Glossy Mix BDSF', 'Simple node setup with Diffuse BDSF mixed with Glossy BDSF'),
+			('EMISSION', 'Emission Node', 'Hook up the texture to an emission node')
 		)
 	)
 	bpy.types.Scene.bsgimp_use_node_group = bpy.props.BoolProperty(name = 'Use node groups for materials', default=False, description='Use node groups to generate the materials for blocks')
@@ -234,8 +304,7 @@ def register():
 		items=(
 			('SAME_CONFIG', 'Same Group', 'Use the same node group for all blocks'),
 			('FOR_EACH_BLOCK', 'By Block', 'Use one node group for each kind of block'),
-			('FOR_EACH_SKIN', 'By Skin', 'Use one node group for each kind of skin'),
-			('FOR_EACH_BLOCK_SKIN', 'By Block + Skin', 'Use one node group for each kind of block and by skin')
+			('FOR_EACH_SKIN', 'By Skin', 'Use one node group for each kind of skin')
 		)
 	)
 
@@ -250,6 +319,10 @@ def register():
 			('DO_NOTHING', 'Do Nothing', 'Do absolutely nothing')
 		)
 	)
+
+	bpy.types.Scene.bsgimp_purgeable_materials = bpy.props.CollectionProperty(type=PurgeableMaterialList)
+	bpy.types.Scene.bsgimp_selectable_imports = bpy.props.CollectionProperty(type=SelectableImportedObjectList)
+
 	bpy.app.handlers.load_post.append(ReadGlobalConfig)
 
 def unregister():
@@ -260,6 +333,11 @@ def unregister():
 	bpy.utils.unregister_class(SettingsPanel)
 	bpy.utils.unregister_class(ImportOperator)
 	bpy.utils.unregister_class(SaveGlobalConfiguration)
+	bpy.utils.unregister_class(GeneralSettings)
+	bpy.utils.unregister_class(PurgeMaterials)
+	bpy.utils.unregister_class(PurgeableMaterialList)
+	bpy.utils.unregister_class(SelectableImportedObjectList)
+	bpy.utils.unregister_class(SelectImportedObjects)
 
 	# unregister properties
 	del bpy.types.Scene.bsgimp_bsg_path
@@ -271,6 +349,11 @@ def unregister():
 	del bpy.types.Scene.bsgimp_create_parent
 	del bpy.types.Scene.bsgimp_line_type_join_components
 	del bpy.types.Scene.bsgimp_line_type_brace_delete_threshold
+	del bpy.types.Scene.bsgimp_purgeable_materials
+	del bpy.types.Scene.bsgimp_make_unique_node_groups
+	del bpy.types.Scene.bsgimp_use_node_group
+	del bpy.types.Scene.bsgimp_line_type_cleanup_options
+	del bpy.types.Scene.bsgimp_selectable_imports
 	
 
 #This is required in order for the script to run in the text editor   

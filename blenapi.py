@@ -15,13 +15,13 @@ dev_mode = True
 if dev_mode:
 	import Block
 	import Component
-	from MaterialCatalog import DefaultMaterial
+	from MaterialCatalog import MaterialList, NodeGroups
 	from bsgreader import Reader
 else:
 	from .bsgreader import Reader
 	from .Component import Component
 	from .Block import Block
-	from .MaterialCatalog import *
+	from .MaterialCatalog import MaterialList, NodeGroups
 
 class BlenderAPI():
 	# So we are defining 3 directories. One for the workshop skin directory, one 
@@ -36,6 +36,7 @@ class BlenderAPI():
 	status_description = []
 	temp_obj_list = []
 	block_list = []
+	imported_materials = []
 	import_object_list = {}
 	custom_import_object_list = {}
 
@@ -43,8 +44,12 @@ class BlenderAPI():
 	setting_use_vanilla_skin = False
 	setting_join_line_components = False
 	setting_hide_parent_empties = False
+	setting_use_node_groups = False
 	setting_brace_threshhold = 0.5
 	setting_clean_up_action = 'DO_NOTHING'
+	setting_grouping_mode = 'SAME_CONFIG'
+	setting_node_setup = 'PRINCIPLED_BDSF'
+	
 
 
 	
@@ -56,70 +61,7 @@ class BlenderAPI():
 		self.custom_block_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'CustomBlocks')
 		if dev_mode: self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
 
-	def LookupObject(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
-		'''	
-		Tries to find an object in the scene. If it does not exist, import it and add it
-		to the logbook
-		Parameters
-			block : Block : Block to import
-			component : Component : Component of the block to import
-			vanilla_skins : Boolean : If true, will use vanilla skins
-		'''
-
-		# if the block is not in the object list, create a new key
-		# and update it...
-		sid = str(hash(block.block_id + component.skin_name + block.flipped)) if not self.setting_use_vanilla_skin else str(hash(block.block_id + "Template" + block.flipped))
-		if sid in self.import_object_list.keys():
-			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
-			new_obj.data = bpy.data.objects[self.import_object_list[sid]].data.copy()
-			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(new_obj)
-			return new_obj
-		else:
-			# ...if we cannot find the skin we need, we'll import it
-			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template")
-			for obj in bpy.context.selected_objects: obj.select_set(False)
-			bpy.ops.import_scene.obj(filepath=model[0])
-			bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
-			bpy.ops.object.join()
-			current_obj = list(bpy.context.selected_objects)[0]
-			self.ClearExtraMaterialSlots(current_obj)
-			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
-			if self.setting_GenerateMaterial:
-				current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not self.setting_use_vanilla_skin else 'Template')
-			# Set the offset scale data from the JSON file
-			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
-			# special offset for propellers...
-			# I'll think of a way to offset this in the json file...
-			if (block.block_id in ['26','55']):
-				component._offset_rotation_y += 23 if block.flipped != 'True' else -23
-			# Rotate according to the offset data from the JSON file
-
-
-			current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
-			current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
-			current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
-			# Translate according to the offset data from the JSON file
-			current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
-			bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-			current_obj.name = str(hash(current_obj.name))
-			self.temp_obj_list.append(current_obj)
-			newobj = current_obj.copy()
-			newobj.data = current_obj.data.copy()
-			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(newobj)
-			skin_data_template = {sid : current_obj.name}
-			self.import_object_list.update(skin_data_template)
-			return newobj
-
-	def ReadMachine(self, path:str):
-		ReaderInstance = Reader(path)
-		st_t = time.time()
-		data = ReaderInstance.ReadBlockData()
-		self.block_list = data['RETURN_LIST']
-		et_t = time.time()
-		print('Read complete in {}'.format(et_t - st_t))
-		return data
-
-	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, use_node_groups=False, node_grouping_mode='SAME_CONFIG', node_group_setup='PRINCIPLED_BDSF', line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -136,11 +78,15 @@ class BlenderAPI():
 		self.setting_brace_threshhold = bracethreshold
 		self.setting_use_vanilla_skin = vanilla_skins
 		self.setting_clean_up_action = line_type_cleanup
+		self.setting_use_node_groups = use_node_groups
+		self.setting_grouping_mode = node_grouping_mode
+		self.setting_node_setup = node_group_setup
 
 		# First we'll reset the object history because if we imported a model before this cycle,
 		# the import model methods will try to duplicate objects that does not exist
 		self.import_object_list = {}
 		self.custom_import_object_list = {}
+		self.imported_materials = []
 
 		# Create a reader instance. This class is used to read the data from the BSG file and
 		# create a list of Block classes
@@ -182,7 +128,76 @@ class BlenderAPI():
 		for block in self.temp_obj_list:
 			bpy.data.objects.remove(block)
 		self.temp_obj_list.clear()
+		return {
+			'imported_materials' : self.imported_materials,
+			'imported_objects' : imported_list
+		}
 		
+
+	def LookupObject(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
+		'''	
+		Tries to find an object in the scene. If it does not exist, import it and add it
+		to the logbook
+		Parameters
+			block : Block : Block to import
+			component : Component : Component of the block to import
+			vanilla_skins : Boolean : If true, will use vanilla skins
+		'''
+
+		# if the block is not in the object list, create a new key
+		# and update it...
+		sid = str(hash(block.block_id + component.skin_name + block.flipped)) if not self.setting_use_vanilla_skin else str(hash(block.block_id + "Template" + block.flipped))
+		if sid in self.import_object_list.keys():
+			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
+			new_obj.data = bpy.data.objects[self.import_object_list[sid]].data.copy()
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(new_obj)
+			return new_obj
+		else:
+			# ...if we cannot find the skin we need, we'll import it
+			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template")
+			for obj in bpy.context.selected_objects: obj.select_set(False)
+			bpy.ops.import_scene.obj(filepath=model[0])
+			bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
+			bpy.ops.object.join()
+			current_obj = list(bpy.context.selected_objects)[0]
+			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
+			self.ClearExtraMaterialSlots(current_obj)
+			if self.setting_GenerateMaterial:
+				current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not self.setting_use_vanilla_skin else 'Template')
+			# Set the offset scale data from the JSON file
+			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
+			# special offset for propellers...
+			# I'll think of a way to offset this in the json file...
+			if (block.block_id in ['26','55']):
+				component._offset_rotation_y += 23 if block.flipped != 'True' else -23
+			# Rotate according to the offset data from the JSON file
+
+
+			current_obj.rotation_euler.x -= math.radians(component._offset_rotation_x)
+			current_obj.rotation_euler.y -= math.radians(component._offset_rotation_y)
+			current_obj.rotation_euler.z -= math.radians(component._offset_rotation_z)
+			# Translate according to the offset data from the JSON file
+			current_obj.location = Vector([component._offset_translate_x, component._offset_translate_y, component._offset_translate_z])
+			bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+			current_obj.name = str(hash(current_obj.name))
+			self.temp_obj_list.append(current_obj)
+			newobj = current_obj.copy()
+			newobj.data = current_obj.data.copy()
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(newobj)
+			skin_data_template = {sid : current_obj.name}
+			self.import_object_list.update(skin_data_template)
+			return newobj
+
+	def ReadMachine(self, path:str):
+		ReaderInstance = Reader(path)
+		st_t = time.time()
+		data = ReaderInstance.ReadBlockData()
+		self.block_list = data['RETURN_LIST']
+		et_t = time.time()
+		print('Read complete in {}'.format(et_t - st_t))
+		return data
+
+
 
 	def ImportCustomModel(self, block_name:str) -> 'Object':
 		'''
@@ -200,6 +215,7 @@ class BlenderAPI():
 			bpy.ops.import_scene.obj(filepath=dir_path)
 			block = list(bpy.context.selected_objects)[0]
 			block.name = str(hash(block.name))
+			[bpy.data.materials.remove(m) for m in block.data.materials]
 			clone = block.copy()
 			clone.data = block.data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
@@ -251,13 +267,10 @@ class BlenderAPI():
 		connector.location = Vector(block.GetLineStartPosition())
 		parent.location = Vector((block.getVectorPosition()))
 		
-
 		# Set parents of the start, end
 		# and connector block to the empty object
 		start.parent = parent
 		end.parent = parent
-		
-
 
 		# Set the rotation of the parent, So it'll
 		# transforming the other child blocks as well
@@ -333,6 +346,7 @@ class BlenderAPI():
 				bpy.data.objects.remove(parent)
 			elif self.setting_clean_up_action == 'HIDE_EMPTIES':
 				parent.hide_set(True)
+			return current_obj
 		return parent
 	
 	def UnparentKeepTransform(self, ob):
@@ -343,14 +357,11 @@ class BlenderAPI():
 		for obj in list(bpy.context.selected_objects): obj.select_set(False)
 		bpy.context.view_layer.objects.active = ob
 		ob.select_set(True)
-
 		loc, rot, sca = mat.decompose()
-
 		mat_loc = Matrix.Translation(loc)
 		mat_rot = rot.to_matrix().to_4x4()
 		mat_sca = Matrix.Identity(4)
 		mat_sca[0][0], mat_sca[1][1], mat_sca[2][2] = sca
-
 		mat_out = mat_loc @ mat_rot @ mat_sca
 		mat_h = mat_out.inverted() @ mat
 
@@ -522,4 +533,18 @@ class BlenderAPI():
 		mat_name = block.base_source + skin_name + "Material"
 		for m in bpy.data.materials:
 			if str(mat_name).__eq__(str(m.name)): return m
-		return DefaultMaterial(block, texture_path, mat_name).Generate()
+		
+		if self.setting_use_node_groups:
+			if self.setting_grouping_mode.__eq__('SAME_CONFIG'):
+				node_group = None
+				try:
+					node_group = bpy.data.node_groups['GlobalConfigNodeSetup'] 
+				except KeyError:
+					node_group = NodeGroups().SimplePrincipledBDSF(name='GlobalConfigNodeSetup')
+				final_m = MaterialList().NodeGroupMaterial(block, texture_path, mat_name, node_group)
+				self.imported_materials.append(final_m)
+				return final_m
+		else:
+			final_m = MaterialList().DefaultMaterial(block, texture_path, mat_name)
+			self.imported_materials.append(final_m)
+			return final_m
