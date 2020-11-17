@@ -1,7 +1,7 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 6, 0),
+	'version': (1, 6, 2),
 	'blender': (2, 90, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
@@ -10,7 +10,7 @@ bl_info = {
 	'category': 'Import-Export',
 }
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	import blenapi
@@ -67,6 +67,7 @@ class GeneralSettings(bpy.types.Panel):
 	def draw(self, context):
 		layout = self.layout
 		layout.row().prop(context.scene, 'bsgimp_create_parent')
+		layout.row().prop(context.scene, 'bsgimp_merge_decor_components')
 		layout.row().operator('obj.selectimported', text = 'Select Imported')
 
 class SettingsPanel(bpy.types.Panel):
@@ -124,7 +125,9 @@ class SkinSettings(bpy.types.Panel):
 		bsgimp_make_unique_node_groups_row = layout.row()
 
 		bsgimp_use_node_group_row.prop(context.scene, 'bsgimp_use_node_group')
+		bsgimp_make_unique_node_groups_row.prop(context.scene, 'bsgimp_make_unique_node_groups')
 		layout.row().operator('materials.purgematerials', text = 'Purge Materials', icon='CANCEL')
+		
 
 		bsgimp_use_node_group_row.enabled = context.scene.bsgimp_generate_materials
 		bsg_imp_node_set_row.enabled = bsgimp_make_unique_node_groups_row.enabled = context.scene.bsgimp_generate_materials and context.scene.bsgimp_use_node_group
@@ -156,7 +159,8 @@ class ImportOperator(bpy.types.Operator):
 				line_type_cleanup=context.scene.bsgimp_line_type_cleanup_options,
 				node_grouping_mode=context.scene.bsgimp_make_unique_node_groups,
 				use_node_groups=context.scene.bsgimp_use_node_group,
-				node_group_setup=context.scene.bsgimp_node_set
+				node_group_setup=context.scene.bsgimp_node_set,
+				merge_decor_blocks=context.scene.bsgimp_merge_decor_components
 				
 			)
 			et_t = time.time()
@@ -286,6 +290,7 @@ def register():
 	
 	# properties
 	bpy.types.Scene.bsgimp_create_parent = bpy.props.BoolProperty(name = 'Create parent', default=False, description = 'Create a boundbox around creation and parent all blocks to it')
+	bpy.types.Scene.bsgimp_merge_decor_components = bpy.props.BoolProperty(name = 'Merge decor components', default=True, description='If checked, decor components such as the levers on the logic gate blocks, will be merged with the base object')
 
 	# materials
 	bpy.types.Scene.bsgimp_use_vanilla_blocks = bpy.props.BoolProperty(name = 'Use vanilla blocks', default=False, description = 'Ignore BSG file skin data and use vanilla blocks')
@@ -298,7 +303,7 @@ def register():
 			('EMISSION', 'Emission Node', 'Hook up the texture to an emission node')
 		)
 	)
-	bpy.types.Scene.bsgimp_use_node_group = bpy.props.BoolProperty(name = 'Use node groups for materials', default=False, description='Use node groups to generate the materials for blocks')
+	bpy.types.Scene.bsgimp_use_node_group = bpy.props.BoolProperty(name = 'Use node groups for materials', default=True, description='Use node groups to generate the materials for blocks')
 	bpy.types.Scene.bsgimp_make_unique_node_groups = bpy.props.EnumProperty(
 		name='Grouping Method',
 		items=(
@@ -354,6 +359,7 @@ def unregister():
 	del bpy.types.Scene.bsgimp_use_node_group
 	del bpy.types.Scene.bsgimp_line_type_cleanup_options
 	del bpy.types.Scene.bsgimp_selectable_imports
+	del bpy.types.Scene.bsgimp_merge_decor_components
 	
 
 #This is required in order for the script to run in the text editor   

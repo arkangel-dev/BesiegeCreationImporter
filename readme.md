@@ -27,8 +27,6 @@ This is an addon for Blender to import Besiege Creations. Currently it works for
 5. Click import
 6. Hope everything imported correctly
 
-
-
 ### Things that are not working
 
 - Surface blocks

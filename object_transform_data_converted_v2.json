@@ -1375,29 +1375,54 @@
         "display_name": "Altimeter",
         "code_name": "Altimeter",
         "components": [{
-            "base_source": "Altimeter",
-            "group": "BASE",
-            "line_type_blocks": false,
-            "override_purge_materials": false,
-            "update_materials": [],
-            "offset": {
-                "position": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.5070467
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 90.0,
-                    "z": 90.0
-                },
-                "scale": {
-                    "x": 0.4506971,
-                    "y": 0.4506971,
-                    "z": 0.4506971
+                "base_source": "Altimeter",
+                "group": "BASE",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.5070467
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 90.0,
+                        "z": 90.0
+                    },
+                    "scale": {
+                        "x": 0.4506971,
+                        "y": 0.4506971,
+                        "z": 0.4506971
+                    }
+                }
+            },
+            {
+                "base_source": "AltimeterNeedle",
+                "group": "BASE",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.5070467
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 90.0,
+                        "z": 90.0
+                    },
+                    "scale": {
+                        "x": 0.4506971,
+                        "y": 0.4506971,
+                        "z": 0.4506971
+                    }
                 }
             }
-        }]
+        ]
     },
     "29": {
         "display_name": "Armor Plate (Round)",
@@ -1655,29 +1680,54 @@
         "display_name": "Timer",
         "code_name": "Timer",
         "components": [{
-            "base_source": "Timer",
-            "group": "BASE",
-            "line_type_blocks": false,
-            "override_purge_materials": false,
-            "update_materials": [],
-            "offset": {
-                "position": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.39
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 90.0,
-                    "z": 90.0
-                },
-                "scale": {
-                    "x": 0.4358787,
-                    "y": 0.4358787,
-                    "z": 0.4358787
+                "base_source": "Timer",
+                "group": "BASE",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.39
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 90.0,
+                        "z": 90.0
+                    },
+                    "scale": {
+                        "x": 0.4358787,
+                        "y": 0.4358787,
+                        "z": 0.4358787
+                    }
+                }
+            },
+            {
+                "base_source": "TimerNeedle",
+                "group": "DECOR",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.39
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 90.0,
+                        "z": 90.0
+                    },
+                    "scale": {
+                        "x": 0.4358787,
+                        "y": 0.4358787,
+                        "z": 0.4358787
+                    }
                 }
             }
-        }]
+        ]
     },
     "69": {
         "display_name": "Anglometer",
@@ -1739,29 +1789,54 @@
         "display_name": "LogicGate",
         "code_name": "LogicGate",
         "components": [{
-            "base_source": "LogicGate",
-            "group": "BASE",
-            "line_type_blocks": false,
-            "override_purge_materials": false,
-            "update_materials": [],
-            "offset": {
-                "position": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.28
-                },
-                "rotation": {
-                    "x": 0.0,
-                    "y": 90.0,
-                    "z": 90.0
-                },
-                "scale": {
-                    "x": 0.7836234,
-                    "y": 0.7836234,
-                    "z": 0.7836234
+                "base_source": "LogicGate",
+                "group": "BASE",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.28
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 90.0,
+                        "z": 90.0
+                    },
+                    "scale": {
+                        "x": 0.7836234,
+                        "y": 0.7836234,
+                        "z": 0.7836234
+                    }
+                }
+            },
+            {
+                "base_source": "LogicGateSwitch",
+                "group": "DECOR",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.28
+                    },
+                    "rotation": {
+                        "x": 0.0,
+                        "y": 90.0,
+                        "z": 90.0
+                    },
+                    "scale": {
+                        "x": 0.7836234,
+                        "y": 0.7836234,
+                        "z": 0.7836234
+                    }
                 }
             }
-        }]
+        ]
     },
     "7": {
         "display_name": "Brace",

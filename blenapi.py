@@ -10,7 +10,7 @@ from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	import Block
@@ -45,6 +45,7 @@ class BlenderAPI():
 	setting_join_line_components = False
 	setting_hide_parent_empties = False
 	setting_use_node_groups = False
+	setting_merge_decor_blocks = True
 	setting_brace_threshhold = 0.5
 	setting_clean_up_action = 'DO_NOTHING'
 	setting_grouping_mode = 'SAME_CONFIG'
@@ -61,7 +62,7 @@ class BlenderAPI():
 		self.custom_block_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'CustomBlocks')
 		if dev_mode: self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
 
-	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, use_node_groups=False, node_grouping_mode='SAME_CONFIG', node_group_setup='PRINCIPLED_BDSF', line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, merge_decor_blocks=False, use_node_groups=False, node_grouping_mode='SAME_CONFIG', node_group_setup='PRINCIPLED_BDSF', line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -81,6 +82,7 @@ class BlenderAPI():
 		self.setting_use_node_groups = use_node_groups
 		self.setting_grouping_mode = node_grouping_mode
 		self.setting_node_setup = node_group_setup
+		self.setting_merge_decor_blocks = merge_decor_blocks
 
 		# First we'll reset the object history because if we imported a model before this cycle,
 		# the import model methods will try to duplicate objects that does not exist
@@ -112,8 +114,9 @@ class BlenderAPI():
 		# This is for drawing "normal type blocks". These blocks have to be simply imported
 		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
 		for block in normal_draw:
-			for component in block.components:
-				imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
+			imported_list.extend(self.ImportBlock(block))
+			# for component in block.components:
+				# imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		# This is for drawing "line type blocks". These blocks are a bit more complicated. These blocks
 		# have a position and rotation for start and end blocks. These blocks are positioned and rotated.
@@ -126,13 +129,40 @@ class BlenderAPI():
 		
 		# Then we get rid of the temp objects because we no longer need them :)
 		for block in self.temp_obj_list:
-			bpy.data.objects.remove(block)
+			try:
+				bpy.data.objects.remove(block)
+			except ReferenceError:
+				pass
 		self.temp_obj_list.clear()
 		return {
 			'imported_materials' : self.imported_materials,
 			'imported_objects' : imported_list
 		}
-		
+	
+	def ImportBlock(self, block) -> list:
+		base_block = None
+		decor_blocks = []
+		return_list = []
+
+		for component in block.components:
+			imobject = self.BlockDrawTypeDefault(block, component, self.setting_use_vanilla_skin)
+			if component.group == 'BASE':
+				base_block = imobject
+			elif component.group == 'DECOR':
+				decor_blocks.append(imobject)
+			imobject.select_set(True)
+		if self.setting_merge_decor_blocks:
+			for obj in bpy.context.selected_objects: obj.select_set(False)
+			for obj in decor_blocks: obj.select_set(True)
+			base_block.select_set(True)
+			bpy.context.view_layer.objects.active = base_block
+			bpy.ops.object.join()
+			return [bpy.context.selected_objects[0]]
+
+		return_list.append(base_block)
+		return_list.extend(decor_blocks)
+		return return_list
+
 
 	def LookupObject(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
 		'''	
@@ -146,7 +176,7 @@ class BlenderAPI():
 
 		# if the block is not in the object list, create a new key
 		# and update it...
-		sid = str(hash(block.block_id + component.skin_name + block.flipped)) if not self.setting_use_vanilla_skin else str(hash(block.block_id + "Template" + block.flipped))
+		sid = str(hash(component.base_source + component.skin_name + block.flipped)) if not self.setting_use_vanilla_skin else str(hash(component.base_source + "Template" + block.flipped))
 		if sid in self.import_object_list.keys():
 			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
 			new_obj.data = bpy.data.objects[self.import_object_list[sid]].data.copy()
@@ -154,16 +184,19 @@ class BlenderAPI():
 			return new_obj
 		else:
 			# ...if we cannot find the skin we need, we'll import it
-			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template")
+			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name, only_model=True) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template", only_model=True)
+			skin = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchModel(block.code_name, "0", "Template", only_texture=True)
+			print(skin)
 			for obj in bpy.context.selected_objects: obj.select_set(False)
-			bpy.ops.import_scene.obj(filepath=model[0])
-			bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
-			bpy.ops.object.join()
+			bpy.ops.import_scene.obj(filepath=model)
+			if len(bpy.context.selectable_objects) > 1:
+				bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
+				bpy.ops.object.join()
 			current_obj = list(bpy.context.selected_objects)[0]
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
 			self.ClearExtraMaterialSlots(current_obj)
 			if self.setting_GenerateMaterial:
-				current_obj.active_material = self.GenerateMaterial(component, model[1], component.skin_name if not self.setting_use_vanilla_skin else 'Template')
+				current_obj.active_material = self.GenerateMaterial(component, skin, component.skin_name if not self.setting_use_vanilla_skin else 'Template')
 			# Set the offset scale data from the JSON file
 			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
 			# special offset for propellers...
@@ -432,6 +465,7 @@ class BlenderAPI():
 		Return : Object
 		Exceptions : None
 		'''
+		print("BlockDrawTypeDefault {}".format(component.base_source))
 		# # This can be done by importing a block, and then instead of importing it again from
 		# # disk, the same block can be duplicated again. This will give a HUGE performance boost
 		current_obj = self.LookupObject(block, component, vanilla_skins)
@@ -465,7 +499,7 @@ class BlenderAPI():
 		o.empty_draw_type = 'PLAIN_AXES'
 
 
-	def FetchModel(self, block_name:str, skin_id:str, skin_name='Template', only_texture=False) -> None:
+	def FetchModel(self, block_name:str, skin_id:str, skin_name='Template', only_texture=False, only_model=False) -> None:
 		'''
 		Finds the absolute path to the image and model of the skin needed.
 		Parameters
@@ -478,6 +512,7 @@ class BlenderAPI():
 		'''
 		# TODO Add skin not found exception
 		# TODO Refactor `blenapi.FetchModel()`
+		
 		dlist = '?'
 		if skin_name != 'Template':
 			try:
@@ -488,13 +523,17 @@ class BlenderAPI():
 		model_dirs = [
 			os.path.join(self.workshop_store, skin_id, dlist[0], block_name),
 			os.path.join(self.game_store, skin_name, block_name),
-			os.path.join(self.backup_store, block_name)
+			os.path.join(self.backup_store, block_name),
+			os.path.join(self.custom_block_dir, block_name)
 		]
 		for cdir in model_dirs:
+			print("Searching in {} for skin...".format(cdir))
 			result_t = self.AttemptLoad(cdir, '.png')
 			result_o = self.AttemptLoad(cdir, '.obj')
-			if result_t and result_o: return [result_o, result_t]
 			if only_texture and result_t: return result_t
+			if only_model and result_o: return result_o
+			# if result_t and result_o: return [result_o, result_t]
+		print("ERROR: Cannot find file...")
 		return ""
 
 	def AttemptLoad(self, directory:str, extension:str) -> bool:
@@ -535,15 +574,23 @@ class BlenderAPI():
 			if str(mat_name).__eq__(str(m.name)): return m
 		
 		if self.setting_use_node_groups:
+			node_group_name = ''
 			if self.setting_grouping_mode.__eq__('SAME_CONFIG'):
-				node_group = None
-				try:
-					node_group = bpy.data.node_groups['GlobalConfigNodeSetup'] 
-				except KeyError:
-					node_group = NodeGroups().SimplePrincipledBDSF(name='GlobalConfigNodeSetup')
-				final_m = MaterialList().NodeGroupMaterial(block, texture_path, mat_name, node_group)
-				self.imported_materials.append(final_m)
-				return final_m
+				node_group_name = 'GlobalConfigNodeSetup'
+			elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'):
+				node_group_name = '{}SkinNodeSetup'.format(skin_name)
+			elif self.setting_grouping_mode.__eq__('FOR_EACH_BLOCK'):
+				node_group_name = '{}BlockNodeSetup'.format(block.base_source)
+
+			node_group = None
+			
+			try:
+				node_group = bpy.data.node_groups[node_group_name] 
+			except KeyError:
+				node_group = NodeGroups().SimplePrincipledBDSF(name=node_group_name)
+			final_m = MaterialList().NodeGroupMaterial(block, texture_path, mat_name, node_group)
+			self.imported_materials.append(final_m)
+			return final_m
 		else:
 			final_m = MaterialList().DefaultMaterial(block, texture_path, mat_name)
 			self.imported_materials.append(final_m)
