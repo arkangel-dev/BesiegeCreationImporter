@@ -1,16 +1,18 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 6, 2),
+	'version': (1, 6, 3),
 	'blender': (2, 90, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
-	'warning': 'This addon is still being worked on',
-	'wiki_url': '',
+	'warning': 'This addon is still pretty experimental',
+	'wiki_url': 'https://github.com/arkangel-dev/BesiegeCreationImporter',
 	'category': 'Import-Export',
+	'tracker_url' : 'https://github.com/arkangel-dev/BesiegeCreationImporter/issues/new/choose',
+	'support' : 'COMMUNITY',
 }
 
-dev_mode = True
+dev_mode = False
 
 if dev_mode:
 	import blenapi
@@ -263,7 +265,7 @@ def ReadFileStats(self, context):
 		context.scene.bsgimp_template_path,
 		context.scene.bsgimp_backup_skin
 	)
-	GlobalData.result_data = GlobalData.importer.ReadMachine(bpy.path.abspath(context.scene.bsgimp_bsg_path))
+	GlobalData.result_data = GlobalData.importer.ReadBSGData(bpy.path.abspath(context.scene.bsgimp_bsg_path))
 	
 
 def register():

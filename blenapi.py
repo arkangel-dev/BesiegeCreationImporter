@@ -10,7 +10,7 @@ from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
 
-dev_mode = True
+dev_mode = False
 
 if dev_mode:
 	import Block
@@ -51,8 +51,6 @@ class BlenderAPI():
 	setting_grouping_mode = 'SAME_CONFIG'
 	setting_node_setup = 'PRINCIPLED_BDSF'
 	
-
-
 	
 	def __init__(self, ws_store, game_store, backup):
 		self.status = 'OK'
@@ -114,7 +112,7 @@ class BlenderAPI():
 		# This is for drawing "normal type blocks". These blocks have to be simply imported
 		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
 		for block in normal_draw:
-			imported_list.extend(self.ImportBlock(block))
+			imported_list.extend(self.ProcessDefaultTypeBlock(block))
 			# for component in block.components:
 				# imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
@@ -139,7 +137,7 @@ class BlenderAPI():
 			'imported_objects' : imported_list
 		}
 	
-	def ImportBlock(self, block) -> list:
+	def ProcessDefaultTypeBlock(self, block) -> list:
 		base_block = None
 		decor_blocks = []
 		return_list = []
@@ -155,8 +153,9 @@ class BlenderAPI():
 			for obj in bpy.context.selected_objects: obj.select_set(False)
 			for obj in decor_blocks: obj.select_set(True)
 			base_block.select_set(True)
-			bpy.context.view_layer.objects.active = base_block
-			bpy.ops.object.join()
+			if len(decor_blocks) > 0:
+				bpy.context.view_layer.objects.active = base_block
+				bpy.ops.object.join()
 			return [bpy.context.selected_objects[0]]
 
 		return_list.append(base_block)
@@ -183,10 +182,9 @@ class BlenderAPI():
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(new_obj)
 			return new_obj
 		else:
+			print("Object not found : {}".format(component.base_source))
 			# ...if we cannot find the skin we need, we'll import it
-			model = self.FetchModel(component.base_source, component.skin_id, component.skin_name, only_model=True) if not self.setting_use_vanilla_skin else self.FetchModel(component.base_source, "0", "Template", only_model=True)
-			skin = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchModel(block.code_name, "0", "Template", only_texture=True)
-			print(skin)
+			model = self.FetchSkinFile(component.base_source, component.skin_id, component.skin_name, only_model=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile(component.base_source, "0", "Template", only_model=True)
 			for obj in bpy.context.selected_objects: obj.select_set(False)
 			bpy.ops.import_scene.obj(filepath=model)
 			if len(bpy.context.selectable_objects) > 1:
@@ -196,7 +194,7 @@ class BlenderAPI():
 			[bpy.data.materials.remove(m) for m in current_obj.data.materials]
 			self.ClearExtraMaterialSlots(current_obj)
 			if self.setting_GenerateMaterial:
-				current_obj.active_material = self.GenerateMaterial(component, skin, component.skin_name if not self.setting_use_vanilla_skin else 'Template')
+				current_obj.active_material = self.GenerateMaterial(block ,component, component.skin_name if not self.setting_use_vanilla_skin else 'TemplateA')
 			# Set the offset scale data from the JSON file
 			current_obj.scale = [component._offset_scale_x, component._offset_scale_z, component._offset_scale_y]
 			# special offset for propellers...
@@ -221,7 +219,7 @@ class BlenderAPI():
 			self.import_object_list.update(skin_data_template)
 			return newobj
 
-	def ReadMachine(self, path:str):
+	def ReadBSGData(self, path:str):
 		ReaderInstance = Reader(path)
 		st_t = time.time()
 		data = ReaderInstance.ReadBlockData()
@@ -244,7 +242,8 @@ class BlenderAPI():
 		# of blocks such as braces, contract spring block and rope and winch blocks, you cannot change the models themselves. They come with
 		# the game game. So we'll have to make our own models and pack them with the addon.
 		if not block_name in self.custom_import_object_list.keys():
-			dir_path = self.AttemptLoad(os.path.join(self.custom_block_dir, block_name), ".obj")
+			print("Object not found : {}".format(block_name))
+			dir_path = self.SearchInDirectory(os.path.join(self.custom_block_dir, block_name), ".obj")
 			bpy.ops.import_scene.obj(filepath=dir_path)
 			block = list(bpy.context.selected_objects)[0]
 			block.name = str(hash(block.name))
@@ -273,7 +272,6 @@ class BlenderAPI():
 		Returns : Object
 		Exceptions : None
 		'''
-		texture_path = self.FetchModel(block.code_name, component.skin_id, component.skin_name, only_texture=True)
 		
 		# Import the connector, start and end objects
 		connector = self.ImportCustomModel(component.line_type_middle)
@@ -282,7 +280,7 @@ class BlenderAPI():
 
 		# Set the material for models
 		if self.setting_GenerateMaterial:
-			material = self.GenerateMaterial(component, texture_path, component.skin_name) if not self.setting_use_vanilla_skin else self.GenerateMaterial(component, texture_path, "Template")
+			material = self.GenerateMaterial(block, component, component.skin_name) #if not self.setting_use_vanilla_skin else self.GenerateMaterial(block, component, "TemplateB")
 			start.active_material = material
 			end.active_material = material
 			connector.active_material = material
@@ -406,12 +404,6 @@ class BlenderAPI():
 		for v in ob.data.vertices:
 			v.co = mat_h @ v.co
 
-	# def UnparentKeepTransform(self, obj):
-	# 	parent = obj.parent
-	# 	obj.parent = None
-	# 	obj.matrix_world = obj.matrix_world @ parent.matrix_world
-
-
 	def ResetParentTransformRotation(self, obj, parent):
 		try:
 			bpy.context.view_layer.update()
@@ -429,10 +421,10 @@ class BlenderAPI():
 		obj.rotation_quaternion = obj.rotation_quaternion.inverted()
 		obj.rotation_mode = original_rot
 
-	def RotateGlobal(self, obj, radian, axis) -> None:
-		from math import radians
-		from mathutils import Matrix
-		obj.rotation_euler = (obj.rotation_euler.to_matrix() @ Matrix.Rotation(radian, 3, axis)).to_euler()
+	# def RotateGlobal(self, obj, radian, axis) -> None:
+	# 	from math import radians
+	# 	from mathutils import Matrix
+	# 	obj.rotation_euler = (obj.rotation_euler.to_matrix() @ Matrix.Rotation(radian, 3, axis)).to_euler()
 
 	def ClearExtraMaterialSlots(self, obj):
 		obj.active_material_index = 0
@@ -465,7 +457,6 @@ class BlenderAPI():
 		Return : Object
 		Exceptions : None
 		'''
-		print("BlockDrawTypeDefault {}".format(component.base_source))
 		# # This can be done by importing a block, and then instead of importing it again from
 		# # disk, the same block can be duplicated again. This will give a HUGE performance boost
 		current_obj = self.LookupObject(block, component, vanilla_skins)
@@ -499,7 +490,7 @@ class BlenderAPI():
 		o.empty_draw_type = 'PLAIN_AXES'
 
 
-	def FetchModel(self, block_name:str, skin_id:str, skin_name='Template', only_texture=False, only_model=False) -> None:
+	def FetchSkinFile(self, block_name:str, skin_id:str, skin_name='Template', only_texture=False, only_model=False) -> None:
 		'''
 		Finds the absolute path to the image and model of the skin needed.
 		Parameters
@@ -527,16 +518,17 @@ class BlenderAPI():
 			os.path.join(self.custom_block_dir, block_name)
 		]
 		for cdir in model_dirs:
-			print("Searching in {} for skin...".format(cdir))
-			result_t = self.AttemptLoad(cdir, '.png')
-			result_o = self.AttemptLoad(cdir, '.obj')
+			target_type = "skin" if only_texture and (not only_model) else "model" 
+			print("Searching in {} for skin file (type : {})...".format(cdir, target_type))
+			result_t = self.SearchInDirectory(cdir, '.png')
+			result_o = self.SearchInDirectory(cdir, '.obj')
 			if only_texture and result_t: return result_t
 			if only_model and result_o: return result_o
 			# if result_t and result_o: return [result_o, result_t]
 		print("ERROR: Cannot find file...")
 		return ""
 
-	def AttemptLoad(self, directory:str, extension:str) -> bool:
+	def SearchInDirectory(self, directory:str, extension:str) -> bool:
 		'''
 		Try to see if a file with a certain extenson exists in the folder
 		Parameters
@@ -556,7 +548,11 @@ class BlenderAPI():
 			return False
 		return False
 
-	def GenerateMaterial(self, block:Block, texture_path:str, skin_name:str) -> 'Material':
+	def CheckIfMaterialExists(block, skin_name):
+		mat_name = block.base_source + skin_name + "Material"
+		return str(mat_name) in bpy.data.materials.keys()
+
+	def GenerateMaterial(self, block:Block, component:Component, skin_name:str) -> 'Material':
 		'''
 		Generate material for a block. If the material already exists, return that.
 		Parameters
@@ -569,10 +565,14 @@ class BlenderAPI():
 		# Ok time to generate the material. So first We generate the material and then we return it... Its that simple
 		# TODO : Add NodeGroup setup
 
-		mat_name = block.base_source + skin_name + "Material"
-		for m in bpy.data.materials:
-			if str(mat_name).__eq__(str(m.name)): return m
-		
+
+
+		mat_name = component.base_source + skin_name + "Material"
+		search_name = mat_name + "NodeGrouped" if self.setting_use_node_groups else ""
+		if str(search_name) in bpy.data.materials.keys(): return bpy.data.materials[search_name]
+		# print("Cannot find material {}".format(mat_name))
+		texture_path = self.FetchSkinFile(block.code_name, component.skin_id, component.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile(block.code_name, "0", "Template", only_texture=True)
+
 		if self.setting_use_node_groups:
 			node_group_name = ''
 			if self.setting_grouping_mode.__eq__('SAME_CONFIG'):
@@ -580,7 +580,7 @@ class BlenderAPI():
 			elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'):
 				node_group_name = '{}SkinNodeSetup'.format(skin_name)
 			elif self.setting_grouping_mode.__eq__('FOR_EACH_BLOCK'):
-				node_group_name = '{}BlockNodeSetup'.format(block.base_source)
+				node_group_name = '{}BlockNodeSetup'.format(component.base_source)
 
 			node_group = None
 			
@@ -588,10 +588,13 @@ class BlenderAPI():
 				node_group = bpy.data.node_groups[node_group_name] 
 			except KeyError:
 				node_group = NodeGroups().SimplePrincipledBDSF(name=node_group_name)
-			final_m = MaterialList().NodeGroupMaterial(block, texture_path, mat_name, node_group)
+			final_m = MaterialList().NodeGroupMaterial(component, texture_path, mat_name, node_group)
 			self.imported_materials.append(final_m)
 			return final_m
 		else:
-			final_m = MaterialList().DefaultMaterial(block, texture_path, mat_name)
+			final_m = MaterialList().DefaultMaterial(component, texture_path, mat_name)
 			self.imported_materials.append(final_m)
 			return final_m
+
+			# BraceSectionAAl-ShadowMaterial
+			# BraceSectionAAl-ShadowMaterialNodeGrouped

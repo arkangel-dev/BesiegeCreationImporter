@@ -1400,7 +1400,7 @@
             },
             {
                 "base_source": "AltimeterNeedle",
-                "group": "BASE",
+                "group": "DECOR",
                 "line_type_blocks": false,
                 "override_purge_materials": false,
                 "update_materials": [],
@@ -1733,57 +1733,107 @@
         "display_name": "Anglometer",
         "code_name": "Anglometer",
         "components": [{
-            "base_source": "Anglometer",
-            "group": "BASE",
-            "line_type_blocks": false,
-            "override_purge_materials": false,
-            "update_materials": [],
-            "offset": {
-                "position": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.123
-                },
-                "rotation": {
-                    "x": 90.0,
-                    "y": 0.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 0.2368702,
-                    "y": 0.2368702,
-                    "z": 0.2368702
+                "base_source": "Anglometer",
+                "group": "BASE",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.123
+                    },
+                    "rotation": {
+                        "x": 90.0,
+                        "y": 0.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 0.2368702,
+                        "y": 0.2368702,
+                        "z": 0.2368702
+                    }
+                }
+            },
+            {
+                "base_source": "AnglometerNeedle",
+                "group": "DECOR",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.123
+                    },
+                    "rotation": {
+                        "x": 90.0,
+                        "y": 180.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 0.2368702,
+                        "y": 0.2368702,
+                        "z": 0.2368702
+                    }
                 }
             }
-        }]
+        ]
     },
     "70": {
         "display_name": "Speedometer",
         "code_name": "Speedometer",
         "components": [{
-            "base_source": "Speedometer",
-            "group": "BASE",
-            "line_type_blocks": false,
-            "override_purge_materials": false,
-            "update_materials": [],
-            "offset": {
-                "position": {
-                    "x": 0.0,
-                    "y": 0.0,
-                    "z": 0.136
-                },
-                "rotation": {
-                    "x": 90.0,
-                    "y": 180.0,
-                    "z": 0.0
-                },
-                "scale": {
-                    "x": 0.3629585,
-                    "y": 0.3629585,
-                    "z": 0.3629585
+                "base_source": "Speedometer",
+                "group": "BASE",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.136
+                    },
+                    "rotation": {
+                        "x": 90.0,
+                        "y": 180.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 0.3629585,
+                        "y": 0.3629585,
+                        "z": 0.3629585
+                    }
+                }
+            },
+            {
+                "base_source": "SpeedometerNeedle",
+                "group": "DECOR",
+                "line_type_blocks": false,
+                "override_purge_materials": false,
+                "update_materials": [],
+                "offset": {
+                    "position": {
+                        "x": 0.0,
+                        "y": 0.0,
+                        "z": 0.136
+                    },
+                    "rotation": {
+                        "x": 90.0,
+                        "y": 180.0,
+                        "z": 0.0
+                    },
+                    "scale": {
+                        "x": 0.3629585,
+                        "y": 0.3629585,
+                        "z": 0.3629585
+                    }
                 }
             }
-        }]
+        ]
     },
     "68": {
         "display_name": "LogicGate",
