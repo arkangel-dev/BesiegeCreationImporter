@@ -10,7 +10,7 @@ from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	import Block

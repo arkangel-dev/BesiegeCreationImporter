@@ -12,7 +12,7 @@ bl_info = {
 	'support' : 'COMMUNITY',
 }
 
-dev_mode = False
+dev_mode = True
 
 if dev_mode:
 	import blenapi

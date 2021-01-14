@@ -1,4 +1,4 @@
-![](https://img.shields.io/badge/Code%20Quality-Crappy-orange) 
+![](https://img.shields.io/badge/Code%20Quality-Okay-green) 
 
 <img src="readme.assets/thumbnail_skin_update_git.png" alt="thumbnail_skin_update_git" style="zoom: 67%;" />
 
@@ -11,9 +11,9 @@ This is an addon for Blender to import Besiege Creations. Currently it works for
 
 
 ### Installation
-You can download a build from the [releases](https://github.com/arkangel-dev/BesiegeCreationImporter/releases), go to Blender `>` Top Bar `>` Edit `>` Add-ons `>` Install and navigate to the downloaded file. Then you can enable the addon from the Preferences window. If you want to install the addon from the current commit, you can open the files `__init__.py`, `bsgreader.py` and `blenapi.py` and set the variable `dev_mode` to False. You can find the variable at the beginning of each file. Then you can zip it all up and install
+You can download a build from the [releases](https://github.com/arkangel-dev/BesiegeCreationImporter/releases) section, go to Blender `>` Top Bar `>` Edit `>` Add-ons `>` Install and navigate to the downloaded file. Then you can enable the addon from the Preferences window. If you want to install the addon from the current commit, you can open the files `__init__.py`, `bsgreader.py` and `blenapi.py` and set the variable `dev_mode` to False. You can find the variable at the beginning of each file. Then you can zip it all up and install
 
-> **Note :** The latest commit not work correctly or might not even register properly. 
+> **Note :** The latest commit may not work correctly or might not even register properly. 
 
 
 
@@ -33,10 +33,10 @@ You can download a build from the [releases](https://github.com/arkangel-dev/Bes
    - **Merge decor components:** If checked, the addon will join the decorative components with the base components. For example, if checked the needles on logic blocks will be joined with the mesh of the actual logic blocks.
    - **Use vanilla blocks:** If checked the addon will ignore all skin definitions from the BSG file and use the Template skin instead
 
-   - **Generate Materials:** If not checked, materials will not be generated for the block. 
+   - **Generate Materials:** If not checked, materials will not be generated for the blocks. 
    - **Use node groups for materials:** If checked the addon will use node groups in the materials
    - **Grouping Method:** This will define how the node groups will be assigned. The node group can be assigned to all blocks, blocks by type or blocks by skin.
-   - **Delete Threshold**: Defines the minimum distance between the start and end point of a line type before the end point and connector gets deleted (`Needs to be tuned`) Note that this applies to other line type objects
+   - **Delete Threshold**: Defines the minimum distance between the start and end point of a line type block before the end point and connector gets deleted (`Needs to be tuned`)
    - **Join components**: This applies to line type objects. If checked, their components will be joined into a single mesh
    - **Cleanup Action:** This defines how line type objects parents will be processed. You can delete the parents, hide the parents or do nothing.
 
