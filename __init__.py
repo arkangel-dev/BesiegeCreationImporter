@@ -58,6 +58,8 @@ class MainPanel(bpy.types.Panel):
 			importer_row.operator('mesh.importoperator', text = 'Import')
 			importer_row.enabled = not GlobalData.result_data['FAILED']
 
+				
+
 class GeneralSettings(bpy.types.Panel):
 	bl_label = 'General Settings'
 	bl_idname = 'PT_GeneralSettingsPanel'

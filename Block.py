@@ -81,3 +81,39 @@ class Block():
 
 	def GetGlobalMachineRotation(self):
 		return Quaternion((self.machine_rotation_quart_w, self.machine_rotation_quart_x, self.machine_rotation_quart_z, self.machine_rotation_quart_y))
+
+class Surface():
+	# edge list
+	block_id = "73"
+	guid = ""
+	edges = []
+
+	# appearence data
+	hue_col = [0,0,0]
+	saturation = 0.0
+	lum = 0.0
+	skin = ""
+	skin_id = ""
+
+	def __init__(self, _guid):
+		self.guid = _guid
+		self.edges = []
+
+class Surface_Edge():
+	guid = ""
+	# start positions
+	s_x, s_y, s_z = [0,0,0]
+	e_x, e_y, e_z = [0,0,0]
+	x, y, z = [0,0,0]
+
+	def __init__(self):
+		pass
+
+	def GetStartLocation(self) -> list:
+		return [self.s_x, self.s_y, self.s_z]
+
+	def GetEndLocation(self) -> list:
+		return [self.e_x, self.e_y, self.e_z]
+
+	def GetLocation(self) -> list:
+		return [self.x, self.y, self.z]

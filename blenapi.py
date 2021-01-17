@@ -13,14 +13,15 @@ from pathlib import Path
 dev_mode = True
 
 if dev_mode:
-	import Block
 	import Component
+	from Bezier import Bezier
+	from Block import Block, Surface, Surface_Edge
 	from MaterialCatalog import MaterialList, NodeGroups
 	from bsgreader import Reader
 else:
 	from .bsgreader import Reader
 	from .Component import Component
-	from .Block import Block
+	from .Block import Block, Surface, Surface_Edge
 	from .MaterialCatalog import MaterialList, NodeGroups
 
 class BlenderAPI():
@@ -100,14 +101,18 @@ class BlenderAPI():
 		# completed
 		normal_draw = []
 		line_draw = []
+		surface_draw = []
 
 		# Catagorize all the blocks. We separate them by their draw type.
 		# Some objects will have to "drawn" differently than others.
 		for block in self.block_list:
 			if block.block_id in ['7','9','45']:
 				line_draw.append(block)
+			elif block.block_id in ['73']:
+				surface_draw.append(block)
 			else:
 				normal_draw.append(block)
+
 
 		# This is for drawing "normal type blocks". These blocks have to be simply imported
 		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
@@ -124,6 +129,10 @@ class BlenderAPI():
 				imported_list.append(self.BlockDrawTypeLineType(block, component, vanilla_skins))	
 
 		# There is also the "surface type block". But we dont speak of that... (╬▔皿▔)╯	
+		# Scratch that... ProNou has finished the surface blocks so I have an idea how I can finish up
+		# surface blocks. Its going to be fucking nightmare (ノ｀Д)ノ
+		for block in surface_draw:
+			self.BlockDrawTypeSurfaceType(block, vanilla_skins)
 		
 		# Then we get rid of the temp objects because we no longer need them :)
 		for block in self.temp_obj_list:
@@ -259,7 +268,78 @@ class BlenderAPI():
 			clone.data = bpy.data.objects[self.custom_import_object_list[block_name]['model']].data.copy()
 			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(clone)
 			return clone
+
+
+	def BlockDrawTypeSurfaceType(self, surface:Surface, vanilla_skins=False) -> 'Object':
+		print("Interpolating surface with {} edges...".format(len(surface.edges)))
+
+
+		mesh = bpy.data.meshes.new("Surface " + surface.guid)
+		obj_m = bpy.data.objects.new(mesh.name, mesh)
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(obj_m)
+
+		curve_point_list = []
+		for edge in surface.edges:
+			# Code to plot the control points...Used for testing
+			s_parent = bpy.data.objects.new( "start_point_"+edge.guid, None)
+			s_parent.empty_display_size = 0.05
+			e_parent = bpy.data.objects.new( "end_point_"+edge.guid, None)
+			e_parent.empty_display_size = 0.05
+			m_parent = bpy.data.objects.new( "mid_point_"+edge.guid, None)
+			m_parent.empty_display_type = 'SPHERE'
+			m_parent.empty_display_size = 0.05
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(s_parent)
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(e_parent)
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(m_parent)
+			s_parent.location = edge.GetStartLocation()
+			e_parent.location = edge.GetEndLocation()
+			m_parent.location = edge.GetLocation()
+			# Ok so to make the plot, we will first need to determine the transformation from the mid point
+			# of the start and end nodes to the mid control point. Then we can double it... That will give us
+			# the target. Once that's done we can use Bezier.py to generate a curve and plot it... Lets do this...
+			midpoint = self.GetMidpoint(edge.GetStartLocation(), edge.GetEndLocation())
+			new_point = [
+				midpoint[0] + (edge.GetLocation()[0] - midpoint[0]) * 2,
+				midpoint[1] + (edge.GetLocation()[1] - midpoint[1]) * 2,
+				midpoint[2] + (edge.GetLocation()[2] - midpoint[2]) * 2
+			]
+			center_point = [0,0,0]
+			# According to ProNou this is the formular...
+			# B9=2*(B2+B4+B6+B8)/4-(B1+B3+B5+B7)/4
 			
+			np_parent = bpy.data.objects.new( "new_control_point_"+edge.guid, None)
+			np_parent.empty_display_size = 0.05
+			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(np_parent)
+			np_parent.location = new_point
+			point_array = np.array([edge.GetStartLocation(), new_point, edge.GetEndLocation()])
+			t_points = np.arange(0, 1, 0.05)
+			curve_set = Bezier.Curve(t_points, point_array)
+			curve_point_list.extend(curve_set.tolist())
+			curve_set = np.empty((0))
+			print("==================[ EDGE ]==================")
+			print("GUID: " + edge.guid)
+			print("Start: " + ' '.join([str(x) for x in edge.GetStartLocation()]))
+			print("End: " + ' '.join([str(x) for x in edge.GetEndLocation()]))
+			print("Mid: " + ' '.join([str(x) for x in edge.GetLocation()]))
+			print("\n")
+		mesh.from_pydata(curve_point_list, [], [])
+
+
+		# Interpolate L1 (B1, B2, B3)
+
+
+		
+
+
+
+
+
+
+	def GetMidpoint(self, start:list, end:list) -> list:
+		locx = (end[0] + start[0]) / 2
+		locy = (end[1] + start[1]) / 2
+		locz = (end[2] + start[2]) / 2
+		return [locx, locy, locz]
 
 	def BlockDrawTypeLineType(self, block:Block, component:Component, vanilla_skins=False) -> 'Object':
 		'''
