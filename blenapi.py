@@ -272,68 +272,103 @@ class BlenderAPI():
 
 	def BlockDrawTypeSurfaceType(self, surface:Surface, vanilla_skins=False) -> 'Object':
 		print("Interpolating surface with {} edges...".format(len(surface.edges)))
-
-
 		mesh = bpy.data.meshes.new("Surface " + surface.guid)
 		obj_m = bpy.data.objects.new(mesh.name, mesh)
 		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(obj_m)
 
 		curve_point_list = []
-		for edge in surface.edges:
-			# Code to plot the control points...Used for testing
-			s_parent = bpy.data.objects.new( "start_point_"+edge.guid, None)
-			s_parent.empty_display_size = 0.05
-			e_parent = bpy.data.objects.new( "end_point_"+edge.guid, None)
-			e_parent.empty_display_size = 0.05
-			m_parent = bpy.data.objects.new( "mid_point_"+edge.guid, None)
-			m_parent.empty_display_type = 'SPHERE'
-			m_parent.empty_display_size = 0.05
-			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(s_parent)
-			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(e_parent)
-			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(m_parent)
-			s_parent.location = edge.GetStartLocation()
-			e_parent.location = edge.GetEndLocation()
-			m_parent.location = edge.GetLocation()
-			# Ok so to make the plot, we will first need to determine the transformation from the mid point
-			# of the start and end nodes to the mid control point. Then we can double it... That will give us
-			# the target. Once that's done we can use Bezier.py to generate a curve and plot it... Lets do this...
+		end_point_list = []
+		point_count = 0
+		for edge in surface.U_Lines:
+
+
 			midpoint = self.GetMidpoint(edge.GetStartLocation(), edge.GetEndLocation())
 			new_point = [
 				midpoint[0] + (edge.GetLocation()[0] - midpoint[0]) * 2,
 				midpoint[1] + (edge.GetLocation()[1] - midpoint[1]) * 2,
 				midpoint[2] + (edge.GetLocation()[2] - midpoint[2]) * 2
 			]
-			center_point = [0,0,0]
-			# According to ProNou this is the formular...
-			# B9=2*(B2+B4+B6+B8)/4-(B1+B3+B5+B7)/4
 			
-			np_parent = bpy.data.objects.new( "new_control_point_"+edge.guid, None)
-			np_parent.empty_display_size = 0.05
-			bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(np_parent)
-			np_parent.location = new_point
-			point_array = np.array([edge.GetStartLocation(), new_point, edge.GetEndLocation()])
-			t_points = np.arange(0, 1, 0.05)
-			curve_set = Bezier.Curve(t_points, point_array)
-			curve_point_list.extend(curve_set.tolist())
-			curve_set = np.empty((0))
-			print("==================[ EDGE ]==================")
-			print("GUID: " + edge.guid)
-			print("Start: " + ' '.join([str(x) for x in edge.GetStartLocation()]))
-			print("End: " + ' '.join([str(x) for x in edge.GetEndLocation()]))
-			print("Mid: " + ' '.join([str(x) for x in edge.GetLocation()]))
-			print("\n")
-		mesh.from_pydata(curve_point_list, [], [])
+			curve_set = self.GenerateCurve([edge.GetStartLocation(), new_point, edge.GetEndLocation()])
+			end_point_list.append(curve_set)
+			# curve_point_list.extend(curve_set)
+
+			self.MakeReferencePoint("Edge_Start_"+edge.guid, edge.GetStartLocation())
+			self.MakeReferencePoint("Edge_Mid_"+edge.guid, edge.GetLocation(), empty_type="SPHERE")
+			self.MakeReferencePoint("Edge_End_"+edge.guid, edge.GetEndLocation())
 
 
-		# Interpolate L1 (B1, B2, B3)
+		mid_carve_data = surface.GetMidCurveU()
 
+		self.MakeReferencePoint("MIDPOINT_CENTER", mid_carve_data[1], empty_type="SPHERE")
+		self.MakeReferencePoint("MIDPOINT_START", mid_carve_data[0])
+		self.MakeReferencePoint("MIDPOINT_END", mid_carve_data[2])
+
+		midpoint = self.GetMidpoint(mid_carve_data[0], mid_carve_data[2])
+		new_point = [
+			midpoint[0] + (mid_carve_data[1][0] - midpoint[0]) * 2,
+			midpoint[1] + (mid_carve_data[1][1] - midpoint[1]) * 2,
+			midpoint[2] + (mid_carve_data[1][2] - midpoint[2]) * 2
+		]
+		curve_set = self.GenerateCurve([mid_carve_data[0], new_point, mid_carve_data[2]])
+		point_count = len(curve_set)
+		# curve_point_list.extend(curve_set)
+		end_point_list.append(curve_set)
+
+
+		end_point_list[0] = list(reversed(end_point_list[0]))
+		for i in range(0, len(end_point_list[0])):
+			midpoint = self.GetMidpoint(end_point_list[0][i], end_point_list[1][i])
+			new_point = [
+				midpoint[0] + (end_point_list[2][i][0] - midpoint[0]) * 2,
+				midpoint[1] + (end_point_list[2][i][1] - midpoint[1]) * 2,
+				midpoint[2] + (end_point_list[2][i][2] - midpoint[2]) * 2
+			]
+			curve_set = self.GenerateCurve([end_point_list[1][i], new_point, end_point_list[0][i]])
+			curve_point_list.extend(curve_set)
+
+		face_list = self.GenerateFaceList(point_count)
+		mesh.from_pydata(curve_point_list, [],  face_list)
 
 		
+		obj_m.modifiers.new("Solidify", 'SOLIDIFY')
+		obj_m.modifiers.new("Edge Split", 'EDGE_SPLIT')
+		obj_m.modifiers["Solidify"].thickness = 0.05
+		obj_m.modifiers["Solidify"].offset = 0.0
+		for f in mesh.polygons:
+			f.use_smooth = True
 
 
 
+			
+	def GenerateFaceList(self, chunk_size):
+		point_array = range(0, chunk_size * chunk_size)
+		chunk_arr = [point_array[i:i + chunk_size] for i in range(0, len(point_array), chunk_size)]
+		return_list = []
+		for x in range(0, chunk_size - 1):
+			for y in range(0, chunk_size -1):
+				p1 = chunk_arr[x][y]
+				p2 = chunk_arr[x + 1][y]
+				p3 = chunk_arr[x + 1][y + 1]
+				p4 = chunk_arr[x][y + 1]
+				return_list.append([p1, p2, p3, p4])
+		return return_list
 
+	def GenerateCurve(self, points, resolution=0.1) -> list:
+		t_points = np.arange(0, 1, resolution)
+		curve_set = Bezier.Curve(t_points, np.array(points))
+		return_l = curve_set.tolist()
+		return_l.append(points[len(points) - 1])
+		return return_l
 
+		
+	def MakeReferencePoint(self, name, location, size=0.25, empty_type="PLAIN_AXES") -> None:
+		pass
+		# empty = bpy.data.objects.new(name, None)
+		# empty.empty_display_size = size
+		# empty.empty_display_type = empty_type
+		# empty.location = location
+		# bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(empty)
 
 	def GetMidpoint(self, start:list, end:list) -> list:
 		locx = (end[0] + start[0]) / 2
