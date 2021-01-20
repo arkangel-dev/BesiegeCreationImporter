@@ -83,115 +83,141 @@ class Block():
 		return Quaternion((self.machine_rotation_quart_w, self.machine_rotation_quart_x, self.machine_rotation_quart_z, self.machine_rotation_quart_y))
 
 
-class Point():
-	x, y, z = [0,0,0]
+# class Surface():
+# 	# edge list
+# 	block_id = "73"
+# 	guid = ""
+# 	edges = []
 
-	def __init__(self, point:list):
-		self.x = point[0]
-		self.y = point[1]
-		self.z = point[2]
+# 	# appearence data
+# 	hue_col = [0,0,0]
+# 	saturation = 0.0
+# 	lum = 0.0
+# 	skin = ""
+# 	skin_id = ""
 
-class Surface():
-	# edge list
-	block_id = "73"
-	guid = ""
-	edges = []
+# 	IsQuad = True
+# 	FalseIndex = 0
 
-	# appearence data
-	hue_col = [0,0,0]
-	saturation = 0.0
-	lum = 0.0
-	skin = ""
-	skin_id = ""
+# 	U_Lines = []
+# 	V_Lines = []
 
-	IsQuad = True
-	FalseIndex = 0
+# 	def __init__(self, _guid):
+# 		self.guid = _guid
+# 		self.edges = []
+# 		self.U_Lines = []
+# 		self.V_Lines = []
+# 		self.IsQuad = True
 
-	U_Lines = []
-	V_Lines = []
+	# def GetTotalEdgePos(self) -> float:
+	# 	total_x = 0
+	# 	total_y = 0
+	# 	total_z = 0
+	# 	for edge in self.edges:
+	# 		total_x += edge.x
+	# 		total_y += edge.y
+	# 		total_z += edge.z
+	# 	return [total_x, total_y, total_z]
 
-	def __init__(self, _guid):
-		self.guid = _guid
-		self.edges = []
-		self.U_Lines = []
-		self.V_Lines = []
-		self.IsQuad = True
+# 	def GetTotalPointPos(self):
+# 		total_x = 0
+# 		total_y = 0
+# 		total_z = 0
+# 		for edge in self.edges:
+# 			total_x += edge.s_x
+# 			total_y += edge.s_y
+# 			total_z += edge.s_z
 
-	def GetTotalEdgePos(self) -> float:
-		total_x = 0
-		total_y = 0
-		total_z = 0
-		for edge in self.edges:
-			total_x += edge.x
-			total_y += edge.y
-			total_z += edge.z
-		return [total_x, total_y, total_z]
 
-	def GetTotalPointPos(self):
-		total_x = 0
-		total_y = 0
-		total_z = 0
-		for edge in self.edges:
-			total_x += edge.s_x
-			total_y += edge.s_y
-			total_z += edge.s_z
 
-		if not self.IsQuad:
-			total_x -= self.edges[self.FalseIndex].x
-			total_y -= self.edges[self.FalseIndex].y
-			total_z -= self.edges[self.FalseIndex].z
+# 		if not self.IsQuad:
+# 			total_x -= self.edges[self.FalseIndex].x
+# 			total_y -= self.edges[self.FalseIndex].y
+# 			total_z -= self.edges[self.FalseIndex].z
 
-		return [total_x, total_y, total_z]
+# 		return [total_x, total_y, total_z]
 
-	def GetCenterControlPoint(self) -> list:
-		center_point = [0,0,0]
-		total_edges_pos = self.GetTotalEdgePos()
-		total_points_pos = self.GetTotalPointPos()
-		center_point[0] = 2 * (total_edges_pos[0] / 4) - (total_points_pos[0] / 4)
-		center_point[1] = 2 * (total_edges_pos[1] / 4) - (total_points_pos[1] / 4)
-		center_point[2] = 2 * (total_edges_pos[2] / 4) - (total_points_pos[2] / 4)
-		return center_point
+# 	def GetCenterControlPoint(self) -> list:
+# 		center_point = [0,0,0]
+# 		total_edges_pos = self.GetTotalEdgePos()
+# 		total_points_pos = self.GetTotalPointPos()
+# 		center_point[0] = 2 * (total_edges_pos[0] / 4) - (total_points_pos[0] / 4)
+# 		center_point[1] = 2 * (total_edges_pos[1] / 4) - (total_points_pos[1] / 4)
+# 		center_point[2] = 2 * (total_edges_pos[2] / 4) - (total_points_pos[2] / 4)
+# 		return center_point
 
-	def GetMidCurveU(self) -> list:
-		center = self.GetCenterControlPoint()
-		start = [self.V_Lines[0].x, self.V_Lines[0].y, self.V_Lines[0].z]
-		end = [self.V_Lines[1].x, self.V_Lines[1].y, self.V_Lines[1].z]
-		if not self.IsQuad:
-			end = self.GetFalseEdge().GetStartLocation()
-		return [start, center, end]
+# 	def GetMidCurveU(self) -> list:
+# 		center = self.GetCenterControlPoint()
+# 		start = [self.V_Lines[0].x, self.V_Lines[0].y, self.V_Lines[0].z]
+# 		end = [self.V_Lines[1].x, self.V_Lines[1].y, self.V_Lines[1].z]
+# 		if not self.IsQuad:
+# 			end = self.GetFalseEdge().GetStartLocation()
+# 		return [start, center, end]
 
-	def GetFalseEdge(self):
-		for edge in self.edges:
-			if edge.Skip:
-				print("Found")
-				return edge
+# 	def GetFalseEdge(self):
+# 		for edge in self.edges:
+# 			if edge.Skip:
+# 				print("Found")
+# 				return edge
+
+
 
 	
-		
-
-
-class Surface_Edge():
+class BuildSurfaceEdge():
 	guid = ""
-	# start positions
-	s_x, s_y, s_z = [0,0,0]
-	e_x, e_y, e_z = [0,0,0]
-	x, y, z = [0,0,0]
-	Skip = False
+	
+	sx, sy, sz = [0,0,0]
+	mx, my, mz = [0,0,0]
+	ex, ey, ez = [0,0,0]
 
-	def __init__(self):
-		self.Skip = False
+	def __init__(self, guid:str) -> None:
+		self.guid = guid
+		self.sx, self.sy, self.sz = [0,0,0]
+		self.mx, self.my, self.mz = [0,0,0]
+		self.ex, self.ey, self.ez = [0,0,0]
 
-	def GetStartLocation(self) -> list:
-		return [self.s_x, self.s_y, self.s_z]
+	def GetStartPoint(self) -> list:
+		return [self.sx, self.sy, self.sz]
 
-	def GetEndLocation(self) -> list:
-		return [self.e_x, self.e_y, self.e_z]
+	def SetStartPoint(self, points:list) -> None:
+		self.sx = points[0]
+		self.sy = points[1]
+		self.sz = points[2]
 
-	def GetLocation(self) -> list:
-		return [self.x, self.y, self.z]
+	def GetMidPoint(self) -> list:
+		return [self.mx, self.my, self.mz]
 
-	def LocalizePoints(self):
-		# self.s_x, self.s_y, self.s_z = [self.e_x, self.e_y, self.e_z]
-		# self.x, self.y, self.z = [self.e_x, self.e_y, self.e_z]
-		pass
+	def SetMidPoint(self, points:list) -> None:
+		self.mx = points[0]
+		self.my = points[1]
+		self.mz = points[2]
+
+	def GetEndPoint(self) -> list:
+		return [self.ex, self.ey, self.ez]
+
+	def SetEndPoint(self, points:list) -> None:
+		self.ex = points[0]
+		self.ey = points[1]
+		self.ez = points[2]
+
+	
+
+class BuildSurface():
+	block_id = "73"
+	edge_a = BuildSurfaceEdge("")
+	edge_b = BuildSurfaceEdge("")
+	edge_c = BuildSurfaceEdge("")
+
+	guid = ""
+	IsQuad = True
+
+	def __init__(self, guid:str) -> None:
+		self.guid = guid
+		self.IsQuad = True
+	
+	def SetEdgeData(self, edges:list) -> None:
+		self.edge_a = edges[0]
+		self.edge_b = edges[1]
+		self.edge_c = edges[2]
+
 

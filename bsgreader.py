@@ -10,10 +10,10 @@ dev_mode = True
 
 if dev_mode:
 	from Component import Component
-	from Block import Block, Surface, Surface_Edge
+	from Block import Block, BuildSurface, BuildSurfaceEdge
 else:
 	from .Component import Component
-	from .Block import Block, Surface, Surface_Edge
+	from .Block import Block, BuildSurface, BuildSurfaceEdge
 
 from typing import List
 from copy import deepcopy
@@ -182,85 +182,213 @@ class Reader():
 		# we can easily process them as well...
 		# First define a storage for the edges and surfaces. We'll process the edges first
 
-		edges = []
-		for edge in surface_data_edges:
-			c_edge = Surface_Edge()
-			start_guid = edge.find("Data/String[@key='start']").text
-			end_guid = edge.find("Data/String[@key='end']").text
-			s_f = False
-			e_f = False
 
-
-			for point in surface_data_nodes:
-				if point.get('guid') == start_guid:
-					s_f = True
-					c_edge.s_x = float(point.find("Transform/Position").get('x'))
-					c_edge.s_y = float(point.find("Transform/Position").get('z'))
-					c_edge.s_z = float(point.find("Transform/Position").get('y'))
-				
-				if point.get('guid') == end_guid:
-					e_f = True
-					c_edge.e_x = float(point.find('Transform/Position').get('x'))
-					c_edge.e_y = float(point.find('Transform/Position').get('z'))
-					c_edge.e_z = float(point.find('Transform/Position').get('y'))
-				if s_f and e_f: break
-
-			c_edge.x = float(edge.find('Transform/Position').get('x'))
-			c_edge.y = float(edge.find('Transform/Position').get('z'))
-			c_edge.z = float(edge.find('Transform/Position').get('y'))
-			c_edge.guid = edge.get('guid')
-			edges.append(c_edge)
-		
 		for surface in surface_data_surfaces:
-			c_surface = None
-			c_surface = Surface(surface.get('guid'))
+			guid = surface.get('guid')
+
+			# Split the string to get a list of the edge GUIDs
 			surface_edge_guids = surface.find("Data/String[@key='edges']").text.split("|")
 
-			if (len(surface_edge_guids) == 3):
+			c_surface = BuildSurface(guid)
+			if len(surface_edge_guids) == 3:
+				# If we dont have enough edges, we can take a GUID
+				# from the list and add it to the end of the list
 				surface_edge_guids.append(surface_edge_guids[0])
 				c_surface.IsQuad = False
+				print("Adding Quad")
 
-			U_Lines_GUID = [surface_edge_guids[0], surface_edge_guids[2]]
-			V_Lines_GUID = [surface_edge_guids[1], surface_edge_guids[3]]
+			raw_edges = []
+			# Ok so in the last version what went wrong was that the we needed the edges in the same order
+			# that they were defined in the surface tag. But I simply used a for loop iterating through the
+			# edge tags and checking if their guids were in the list of GUIDs from the surface block tag...
+			# Should've seen that coming because ProNou did warn me... I really need to start reading the 
+			# instructions before starting to code...
+			for edge_guid in surface_edge_guids:
+				for edge in surface_data_edges:
+					guid = edge.get('guid')
+					if guid != edge_guid: continue
+
+					c_edge = BuildSurfaceEdge(guid)		
+					start_guid = edge.find("Data/String[@key='start']").text
+					end_guid = edge.find("Data/String[@key='end']").text
+
+					start_point_found = False
+					end_point_found = False
+					
+					# Find the points that define the start and end point of the edge.
+					for point in surface_data_nodes:
+						if start_point_found and end_point_found: break
+						if point.get('guid') == start_guid:
+							start_point_found = True
+							c_edge.SetStartPoint([
+								float(point.find("Transform/Position").get('x')),
+								float(point.find("Transform/Position").get('z')),
+								float(point.find("Transform/Position").get('y'))
+							])
+							print("WRITING : " + str(c_edge.GetStartPoint()))
+						if point.get('guid') == end_guid:
+							end_point_found = True
+							c_edge.SetEndPoint([
+								float(point.find("Transform/Position").get('x')),
+								float(point.find("Transform/Position").get('z')),
+								float(point.find("Transform/Position").get('y'))
+							])
+
+					# Then set the mid point for the edge...
+					c_edge.SetMidPoint([
+						float(edge.find('Transform/Position').get('x')),
+						float(edge.find('Transform/Position').get('z')),
+						float(edge.find('Transform/Position').get('y'))
+					])
+
+					# Add it to the list of raw edges
+					raw_edges.append(c_edge)
+
+			# Now that we have all the raw data edge data,
+			# We can use that data to create the U edges and save it...
+			# First we'll calculate the center edge. Because that's more complicated
+			# than the other two...
+			# First we'll need to get the center point...
+
+			center_edge_mid_point = [0,0,0]
+
+			# Calculate the total location of the points and edges...
+			# Initilze the variables for the location
+			point_total_location_x = 0
+			point_total_location_y = 0
+			point_total_location_z = 0
+			
+			# Initilize the variable for the edges
+			edge_total_location_x = 0
+			edge_total_location_y = 0
+			edge_total_location_z = 0
+
+			# Add it all up...
+			for edge in raw_edges:
+				print(">> X : " + str(edge.GetStartPoint()))
+				point_total_location_x += edge.GetEndPoint()[0]
+				point_total_location_y += edge.GetEndPoint()[1]
+				point_total_location_z += edge.GetEndPoint()[2]
+
+				edge_total_location_x += edge.GetMidPoint()[0]
+				edge_total_location_y += edge.GetMidPoint()[1]
+				edge_total_location_z += edge.GetMidPoint()[2]
+
+			# Then do some mathematical magic...
+			center_edge_mid_point[0] = 2 * edge_total_location_x / 4 - point_total_location_x / 4
+			center_edge_mid_point[1] = 2 * edge_total_location_y / 4 - point_total_location_y / 4
+			center_edge_mid_point[2] = 2 * edge_total_location_z / 4 - point_total_location_z / 4
+
+			# And now we can finally create a new BuildSurfaceEdge object and feed it the points
+			center_edge = BuildSurfaceEdge("NULL")
+			center_edge.SetStartPoint(raw_edges[0].GetMidPoint())
+			center_edge.SetEndPoint(raw_edges[2].GetMidPoint())
+			center_edge.SetMidPoint(center_edge_mid_point)
+			print("MID POINT : ")
+			print(center_edge_mid_point)
+			print("TOTAL POINT X: ")
+			print(point_total_location_x)
+			print("TOTAL EDGE X: ")
+			print(edge_total_location_x)
+
+			# As for the other two edges we already have the data for those two...
+			# So we can feed it to the surface object...and append the surface object to a list...
+			c_surface.edge_a = raw_edges[1]
+			c_surface.edge_b = center_edge
+			c_surface.edge_c = raw_edges[3]
 
 
 
-			for edge in edges:
-				if edge.guid in surface_edge_guids:
-					c_surface.edges.append(edge)
+			returnList.append(c_surface)
 
-			# 	if edge.guid in U_Lines_GUID:
-			# 		c_surface.U_Lines.append(edge)
+		# edges = []
+		# for edge in surface_data_edges:
+		# 	c_edge = BuildSurfaceEdge()
+		# 	start_guid = edge.find("Data/String[@key='start']").text
+		# 	end_guid = edge.find("Data/String[@key='end']").text
+		# 	s_f = False
+		# 	e_f = False
 
-			# 	if edge.guid in V_Lines_GUID:
-			# 		c_surface.V_Lines.append(edge)
 
-			for guid in V_Lines_GUID:
-				for edge in edges:
-					if guid == edge.guid:
-						c_surface.V_Lines.append(copy.copy(edge))
-					if edge.guid == V_Lines_GUID[1] and not c_surface.IsQuad:
-						edge.Skip = True
-						edge.LocalizePoints()
+		# 	for point in surface_data_nodes:
+		# 		if point.get('guid') == start_guid:
+		# 			s_f = True
+		# 			c_edge.sx = float(point.find("Transform/Position").get('x'))
+		# 			c_edge.sy = float(point.find("Transform/Position").get('z'))
+		# 			c_edge.sz = float(point.find("Transform/Position").get('y'))
+				
+		# 		if point.get('guid') == end_guid:
+		# 			e_f = True
+		# 			c_edge.ex = float(point.find('Transform/Position').get('x'))
+		# 			c_edge.ey = float(point.find('Transform/Position').get('z'))
+		# 			c_edge.ez = float(point.find('Transform/Position').get('y'))
+		# 		if s_f and e_f: break
+
+		# 	c_edge.x = float(edge.find('Transform/Position').get('x'))
+		# 	c_edge.y = float(edge.find('Transform/Position').get('z'))
+		# 	c_edge.z = float(edge.find('Transform/Position').get('y'))
+		# 	c_edge.guid = edge.get('guid')
+		# 	edges.append(c_edge)
+
+
+	
+		
+		# for surface in surface_data_surfaces:
+		# 	c_surface = None
+		# 	c_surface = Surface(surface.get('guid'))
+		# 	surface_edge_guids = surface.find("Data/String[@key='edges']").text.split("|")
+
+		# 	if (len(surface_edge_guids) == 3):
+		# 		surface_edge_guids.append(surface_edge_guids[0])
+		# 		c_surface.IsQuad = False
+
+		# 	U_Lines_GUID = [surface_edge_guids[0], surface_edge_guids[2]]
+		# 	V_Lines_GUID = [surface_edge_guids[1], surface_edge_guids[3]]
+
+
+
+		# 	for edge in edges:
+		# 		if edge.guid in surface_edge_guids:
+		# 			c_surface.edges.append(edge)
+
+		# 	# 	if edge.guid in U_Lines_GUID:
+		# 	# 		c_surface.U_Lines.append(edge)
+
+		# 	# 	if edge.guid in V_Lines_GUID:
+		# 	# 		c_surface.V_Lines.append(edge)
+
+		# 	for guid in V_Lines_GUID:
+		# 		for edge in edges:
+		# 			if guid == edge.guid:
+		# 				c_surface.V_Lines.append(copy.copy(edge))
+		# 			if edge.guid == V_Lines_GUID[1] and not c_surface.IsQuad:
+		# 				edge.Skip = True
+		# 				edge.LocalizePoints()
 
 
 					
 
-			for guid in U_Lines_GUID:
-				for edge in edges:
-					if guid == edge.guid:
-						c_surface.U_Lines.append(edge)
+		# 	for guid in U_Lines_GUID:
+		# 		for edge in edges:
+		# 			if guid == edge.guid:
+		# 				c_surface.U_Lines.append(edge)
 
 
-			try:
-				skin_name = surface.find("Settings/Skin").get("name")
-				skin_id = surface.find("Settings/Skin").get("id")
-			except:
-				skin_name = "Template"
-				skin_id = "Template"
-			c_surface.skin = skin_name
-			c_surface.skin_id = skin_id
-			returnList.append(c_surface)
+		# 	try:
+		# 		skin_name = surface.find("Settings/Skin").get("name")
+		# 		skin_id = surface.find("Settings/Skin").get("id")
+		# 	except:
+		# 		skin_name = "Template"
+		# 		skin_id = "Template"
+		# 	c_surface.skin = skin_name
+		# 	c_surface.skin_id = skin_id
+		# 	returnList.append(c_surface)
+
+		print("---------[ SURFACE ]---------")
+		print("Original : " + surface.find("Data/String[@key='edges']").text)
+		for edge in raw_edges:
+			print("\t {}".format(edge.guid))
+
 		
 		print("{} blocks imported...\n{} components imported...\n{} blocks skipped".format(total_blocks, total_components, skipped_blocks))
 		return {

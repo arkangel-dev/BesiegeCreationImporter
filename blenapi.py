@@ -15,13 +15,13 @@ dev_mode = True
 if dev_mode:
 	import Component
 	from Bezier import Bezier
-	from Block import Block, Surface, Surface_Edge
+	from Block import Block, BuildSurface, BuildSurfaceEdge
 	from MaterialCatalog import MaterialList, NodeGroups
 	from bsgreader import Reader
 else:
 	from .bsgreader import Reader
 	from .Component import Component
-	from .Block import Block, Surface, Surface_Edge
+	from .Block import Block, BuildSurface, BuildSurfaceEdge
 	from .MaterialCatalog import MaterialList, NodeGroups
 
 class BlenderAPI():
@@ -270,78 +270,137 @@ class BlenderAPI():
 			return clone
 
 
-	def BlockDrawTypeSurfaceType(self, surface:Surface, vanilla_skins=False) -> 'Object':
-		print("Interpolating surface with {} edges...".format(len(surface.edges)))
+	def BlockDrawTypeSurfaceType(self, surface:BuildSurface, vanilla_skins=False) -> 'Object':
+		print("=========================================================================")
+		print("Interpolating surface...")
 		mesh = bpy.data.meshes.new("Surface " + surface.guid)
-		obj_m = bpy.data.objects.new(mesh.name, mesh)
-		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(obj_m)
+		mesh_object = bpy.data.objects.new(mesh.name, mesh)
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(mesh_object)
 
-		curve_point_list = []
-		end_point_list = []
-		point_count = 0
-		for edge in surface.U_Lines:
+		mesh_vertex_list = []
+		
+		curve_start_points = self.GenerateCurve(surface.edge_a)
+		curve_mid_points = self.GenerateCurve(surface.edge_b)
+		curve_end_points = self.GenerateCurve(surface.edge_c)
+
+		curve_end_points = list(reversed(curve_end_points))
+
+		self.MakeReferencePoint("Mid Curve Mid Point", surface.edge_b.GetMidPoint())
+		self.MakeReferencePoint("Mid Curve Sta Point", surface.edge_b.GetStartPoint())
+		self.MakeReferencePoint("Mid Curve End Point", surface.edge_b.GetEndPoint())
+
+		self.MakeReferencePoint("Sta Curve Mid Point", surface.edge_a.GetMidPoint())
+		self.MakeReferencePoint("Sta Curve Sta Point", surface.edge_a.GetStartPoint())
+		self.MakeReferencePoint("Sta Curve End Point", surface.edge_a.GetEndPoint())
+
+		self.MakeReferencePoint("End Curve Mid Point", surface.edge_c.GetMidPoint())
+		self.MakeReferencePoint("End Curve Sta Point", surface.edge_c.GetStartPoint())
+		self.MakeReferencePoint("End Curve End Point", surface.edge_c.GetEndPoint())
+
+		mesh_vertex_list.extend(curve_start_points)
+		mesh_vertex_list.extend(curve_mid_points)
+		mesh_vertex_list.extend(curve_end_points)
+
+		# for i in range(0, len(curve_start_points)):
+		# 	midpoint = self.GetMidpoint(curve_start_points[i], curve_end_points[i])
+		# 	newpoint = [
+		# 		midpoint[0] + (curve_mid_points[i][0] - midpoint[0]) * 2,
+		# 		midpoint[1] + (curve_mid_points[i][1] - midpoint[1]) * 2,
+		# 		midpoint[2] + (curve_mid_points[i][2] - midpoint[2]) * 2
+		# 	]
+		# 	mesh_vertex_list.extend(self.CalculateCurvePoints([
+		# 		curve_start_points[i],
+		# 		newpoint,
+		# 		curve_end_points[i]
+		# 	]))
+
+		# face_list = self.GenerateFaceList(len(curve_mid_points))
+
+		mesh.from_pydata(mesh_vertex_list, [], [])
+
+		# print("Interpolating surface with {} edges...".format(len(surface.edges)))
+		# mesh = bpy.data.meshes.new("Surface " + surface.guid)
+		# obj_m = bpy.data.objects.new(mesh.name, mesh)
+		# bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(obj_m)
+
+		# curve_point_list = []
+		# end_point_list = []
+		# point_count = 0
+		# for edge in surface.U_Lines:
 
 
-			midpoint = self.GetMidpoint(edge.GetStartLocation(), edge.GetEndLocation())
-			new_point = [
-				midpoint[0] + (edge.GetLocation()[0] - midpoint[0]) * 2,
-				midpoint[1] + (edge.GetLocation()[1] - midpoint[1]) * 2,
-				midpoint[2] + (edge.GetLocation()[2] - midpoint[2]) * 2
-			]
+		# 	midpoint = self.GetMidpoint(edge.GetStartLocation(), edge.GetEndLocation())
+		# 	new_point = [
+		# 		midpoint[0] + (edge.GetLocation()[0] - midpoint[0]) * 2,
+		# 		midpoint[1] + (edge.GetLocation()[1] - midpoint[1]) * 2,
+		# 		midpoint[2] + (edge.GetLocation()[2] - midpoint[2]) * 2
+		# 	]
 			
-			curve_set = self.GenerateCurve([edge.GetStartLocation(), new_point, edge.GetEndLocation()])
-			end_point_list.append(curve_set)
-			# curve_point_list.extend(curve_set)
+		# 	curve_set = self.GenerateCurve([edge.GetStartLocation(), new_point, edge.GetEndLocation()])
+		# 	end_point_list.append(curve_set)
+		# 	# curve_point_list.extend(curve_set)
 
-			self.MakeReferencePoint("Edge_Start_"+edge.guid, edge.GetStartLocation())
-			self.MakeReferencePoint("Edge_Mid_"+edge.guid, edge.GetLocation(), empty_type="SPHERE")
-			self.MakeReferencePoint("Edge_End_"+edge.guid, edge.GetEndLocation())
-
-
-		mid_carve_data = surface.GetMidCurveU()
-
-		self.MakeReferencePoint("MIDPOINT_CENTER", mid_carve_data[1], empty_type="SPHERE")
-		self.MakeReferencePoint("MIDPOINT_START", mid_carve_data[0])
-		self.MakeReferencePoint("MIDPOINT_END", mid_carve_data[2])
-
-		midpoint = self.GetMidpoint(mid_carve_data[0], mid_carve_data[2])
-		new_point = [
-			midpoint[0] + (mid_carve_data[1][0] - midpoint[0]) * 2,
-			midpoint[1] + (mid_carve_data[1][1] - midpoint[1]) * 2,
-			midpoint[2] + (mid_carve_data[1][2] - midpoint[2]) * 2
-		]
-		curve_set = self.GenerateCurve([mid_carve_data[0], new_point, mid_carve_data[2]])
-		point_count = len(curve_set)
-		# curve_point_list.extend(curve_set)
-		end_point_list.append(curve_set)
+		# 	self.MakeReferencePoint("Edge_Start_"+edge.guid, edge.GetStartLocation())
+		# 	self.MakeReferencePoint("Edge_Mid_"+edge.guid, edge.GetLocation(), empty_type="SPHERE")
+		# 	self.MakeReferencePoint("Edge_End_"+edge.guid, edge.GetEndLocation())
 
 
-		end_point_list[0] = list(reversed(end_point_list[0]))
-		for i in range(0, len(end_point_list[0])):
-			midpoint = self.GetMidpoint(end_point_list[0][i], end_point_list[1][i])
-			new_point = [
-				midpoint[0] + (end_point_list[2][i][0] - midpoint[0]) * 2,
-				midpoint[1] + (end_point_list[2][i][1] - midpoint[1]) * 2,
-				midpoint[2] + (end_point_list[2][i][2] - midpoint[2]) * 2
-			]
-			curve_set = self.GenerateCurve([end_point_list[1][i], new_point, end_point_list[0][i]])
-			curve_point_list.extend(curve_set)
+		# mid_carve_data = surface.GetMidCurveU()
 
-		face_list = self.GenerateFaceList(point_count)
-		mesh.from_pydata(curve_point_list, [],  face_list)
+		# self.MakeReferencePoint("MIDPOINT_CENTER", mid_carve_data[1], empty_type="SPHERE")
+		# self.MakeReferencePoint("MIDPOINT_START", mid_carve_data[0])
+		# self.MakeReferencePoint("MIDPOINT_END", mid_carve_data[2])
+
+		# midpoint = self.GetMidpoint(mid_carve_data[0], mid_carve_data[2])
+		# new_point = [
+		# 	midpoint[0] + (mid_carve_data[1][0] - midpoint[0]) * 2,
+		# 	midpoint[1] + (mid_carve_data[1][1] - midpoint[1]) * 2,
+		# 	midpoint[2] + (mid_carve_data[1][2] - midpoint[2]) * 2
+		# ]
+		# curve_set = self.GenerateCurve([mid_carve_data[0], new_point, mid_carve_data[2]])
+		# point_count = len(curve_set)
+		# # curve_point_list.extend(curve_set)
+		# end_point_list.append(curve_set)
+
+
+		# end_point_list[0] = list(reversed(end_point_list[0]))
+		# for i in range(0, len(end_point_list[0])):
+		# 	midpoint = self.GetMidpoint(end_point_list[0][i], end_point_list[1][i])
+		# 	new_point = [
+		# 		midpoint[0] + (end_point_list[2][i][0] - midpoint[0]) * 2,
+		# 		midpoint[1] + (end_point_list[2][i][1] - midpoint[1]) * 2,
+		# 		midpoint[2] + (end_point_list[2][i][2] - midpoint[2]) * 2
+		# 	]
+		# 	curve_set = self.GenerateCurve([end_point_list[1][i], new_point, end_point_list[0][i]])
+		# 	curve_point_list.extend(curve_set)
+
+		# face_list = self.GenerateFaceList(point_count)
+		# mesh.from_pydata(curve_point_list, [],  face_list)
 
 		
-		obj_m.modifiers.new("Solidify", 'SOLIDIFY')
-		obj_m.modifiers.new("Edge Split", 'EDGE_SPLIT')
-		obj_m.modifiers["Solidify"].thickness = 0.05
-		obj_m.modifiers["Solidify"].offset = 0.0
-		for f in mesh.polygons:
-			f.use_smooth = True
+		# obj_m.modifiers.new("Solidify", 'SOLIDIFY')
+		# obj_m.modifiers.new("Edge Split", 'EDGE_SPLIT')
+		# obj_m.modifiers["Solidify"].thickness = 0.05
+		# obj_m.modifiers["Solidify"].offset = 0.0
+		# for f in mesh.polygons:
+		# 	f.use_smooth = True
 
 
+	def GenerateCurve(self, edge:BuildSurfaceEdge) -> list:
+		midpoint = self.GetMidpoint(edge.GetStartPoint(), edge.GetEndPoint())
+		newpoint = [
+			midpoint[0] + (edge.GetMidPoint()[0] - midpoint[0]) * 2,
+			midpoint[1] + (edge.GetMidPoint()[1] - midpoint[1]) * 2,
+			midpoint[2] + (edge.GetMidPoint()[2] - midpoint[2]) * 2
+		]
+		return self.CalculateCurvePoints([
+			edge.GetStartPoint(),
+			newpoint,
+			edge.GetEndPoint()
+		])
 
 			
-	def GenerateFaceList(self, chunk_size):
+	def GenerateFaceList(self, chunk_size) -> list:
 		point_array = range(0, chunk_size * chunk_size)
 		chunk_arr = [point_array[i:i + chunk_size] for i in range(0, len(point_array), chunk_size)]
 		return_list = []
@@ -354,7 +413,7 @@ class BlenderAPI():
 				return_list.append([p1, p2, p3, p4])
 		return return_list
 
-	def GenerateCurve(self, points, resolution=0.1) -> list:
+	def CalculateCurvePoints(self, points, resolution=0.1) -> list:
 		t_points = np.arange(0, 1, resolution)
 		curve_set = Bezier.Curve(t_points, np.array(points))
 		return_l = curve_set.tolist()
@@ -363,12 +422,12 @@ class BlenderAPI():
 
 		
 	def MakeReferencePoint(self, name, location, size=0.25, empty_type="PLAIN_AXES") -> None:
-		pass
-		# empty = bpy.data.objects.new(name, None)
-		# empty.empty_display_size = size
-		# empty.empty_display_type = empty_type
-		# empty.location = location
-		# bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(empty)
+		# pass
+		empty = bpy.data.objects.new(name, None)
+		empty.empty_display_size = size
+		empty.empty_display_type = empty_type
+		empty.location = location
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(empty)
 
 	def GetMidpoint(self, start:list, end:list) -> list:
 		locx = (end[0] + start[0]) / 2
