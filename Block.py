@@ -165,7 +165,7 @@ class Block():
 	
 class BuildSurfaceEdge():
 	guid = ""
-	
+	IsFalseEdge = False
 	sx, sy, sz = [0,0,0]
 	mx, my, mz = [0,0,0]
 	ex, ey, ez = [0,0,0]
@@ -175,6 +175,7 @@ class BuildSurfaceEdge():
 		self.sx, self.sy, self.sz = [0,0,0]
 		self.mx, self.my, self.mz = [0,0,0]
 		self.ex, self.ey, self.ez = [0,0,0]
+		self.IsFalseEdge = False
 
 	def GetStartPoint(self) -> list:
 		return [self.sx, self.sy, self.sz]
@@ -199,7 +200,23 @@ class BuildSurfaceEdge():
 		self.ex = points[0]
 		self.ey = points[1]
 		self.ez = points[2]
+	
+	def GetCurveMidControlPoint(self) -> list:
+		midpoint = [
+			(self.GetEndPoint()[0] + self.GetStartPoint()[0]) / 2,
+			(self.GetEndPoint()[1] + self.GetStartPoint()[1]) / 2,
+			(self.GetEndPoint()[2] + self.GetStartPoint()[2]) / 2
+		]
+		return [
+			midpoint[0] + (self.GetMidPoint()[0] - midpoint[0]) * 2,
+			midpoint[1] + (self.GetMidPoint()[1] - midpoint[1]) * 2,
+			midpoint[2] + (self.GetMidPoint()[2] - midpoint[2]) * 2
+		]
 
+	def InvertPointLocations(self) -> list:
+		temp = self.GetEndPoint()
+		self.SetEndPoint(self.GetStartPoint())
+		self.SetStartPoint(temp)
 	
 
 class BuildSurface():
@@ -210,10 +227,12 @@ class BuildSurface():
 
 	guid = ""
 	IsQuad = True
+	RawEdgeList = []
 
 	def __init__(self, guid:str) -> None:
 		self.guid = guid
 		self.IsQuad = True
+		self.EdgeList = []
 	
 	def SetEdgeData(self, edges:list) -> None:
 		self.edge_a = edges[0]

@@ -369,4 +369,5 @@ def unregister():
 #This is required in order for the script to run in the text editor   
 if __name__ == '__main__':
 	register()
-	
+	import importlib
+	importlib.reload(blenapi)	

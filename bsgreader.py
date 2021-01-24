@@ -195,7 +195,6 @@ class Reader():
 				# from the list and add it to the end of the list
 				surface_edge_guids.append(surface_edge_guids[0])
 				c_surface.IsQuad = False
-				print("Adding Quad")
 
 			raw_edges = []
 			# Ok so in the last version what went wrong was that the we needed the edges in the same order
@@ -215,7 +214,7 @@ class Reader():
 					start_point_found = False
 					end_point_found = False
 					
-					# Find the points that define the start and end point of the edge.
+					# Find the pointss that define the start and end point of the edge.
 					for point in surface_data_nodes:
 						if start_point_found and end_point_found: break
 						if point.get('guid') == start_guid:
@@ -225,7 +224,6 @@ class Reader():
 								float(point.find("Transform/Position").get('z')),
 								float(point.find("Transform/Position").get('y'))
 							])
-							print("WRITING : " + str(c_edge.GetStartPoint()))
 						if point.get('guid') == end_guid:
 							end_point_found = True
 							c_edge.SetEndPoint([
@@ -263,33 +261,95 @@ class Reader():
 			edge_total_location_y = 0
 			edge_total_location_z = 0
 
+
+
+			# Used surface indexes are 1 and 3
+
+			if not c_surface.IsQuad:
+				r1_inverted = r2_invered = False
+				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
+					raw_edges[3].InvertPointLocations()
+					r1_inverted = True
+
+				if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint():
+					raw_edges[1].InvertPointLocations()
+					r2_invered = True
+
+				raw_edges[3].InvertPointLocations()
+
+				if r1_inverted and r2_invered:
+					raw_edges[1].InvertPointLocations()
+					raw_edges[3].InvertPointLocations()
+			else:
+			
+				if raw_edges[1].GetEndPoint() != raw_edges[0].GetStartPoint():
+					raw_edges[1].InvertPointLocations()
+
+				if raw_edges[2].GetEndPoint() != raw_edges[1].GetStartPoint():
+					raw_edges[2].InvertPointLocations()
+
+				if raw_edges[3].GetEndPoint() != raw_edges[2].GetStartPoint():
+					raw_edges[3].InvertPointLocations()
+
+				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
+					raw_edges[3].InvertPointLocations()
+
+				if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint():
+					raw_edges[1].InvertPointLocations()
+
+				raw_edges[3].InvertPointLocations()
+
+
+
+
+
+			# raw_edges[1].InvertPointLocations()
+			# raw_edges[3].InvertPointLocations()
+
+
+
+
+
+			if not c_surface.IsQuad:
+				raw_edges[0].IsFalseEdge = True
+
 			# Add it all up...
 			for edge in raw_edges:
-				print(">> X : " + str(edge.GetStartPoint()))
-				point_total_location_x += edge.GetEndPoint()[0]
-				point_total_location_y += edge.GetEndPoint()[1]
-				point_total_location_z += edge.GetEndPoint()[2]
+				if not edge.IsFalseEdge:
+					point_total_location_x += edge.GetEndPoint()[0]
+					point_total_location_y += edge.GetEndPoint()[1]
+					point_total_location_z += edge.GetEndPoint()[2]
 
-				edge_total_location_x += edge.GetMidPoint()[0]
-				edge_total_location_y += edge.GetMidPoint()[1]
-				edge_total_location_z += edge.GetMidPoint()[2]
+					point_total_location_x += edge.GetStartPoint()[0]
+					point_total_location_y += edge.GetStartPoint()[1]
+					point_total_location_z += edge.GetStartPoint()[2]
+
+					edge_total_location_x += edge.GetMidPoint()[0]
+					edge_total_location_y += edge.GetMidPoint()[1]
+					edge_total_location_z += edge.GetMidPoint()[2]
+
 
 			# Then do some mathematical magic...
-			center_edge_mid_point[0] = 2 * edge_total_location_x / 4 - point_total_location_x / 4
-			center_edge_mid_point[1] = 2 * edge_total_location_y / 4 - point_total_location_y / 4
-			center_edge_mid_point[2] = 2 * edge_total_location_z / 4 - point_total_location_z / 4
+
+			if c_surface.IsQuad:
+				center_edge_mid_point[0] = 2 * (edge_total_location_x / 4) - (point_total_location_x / 8)
+				center_edge_mid_point[1] = 2 * (edge_total_location_y / 4) - (point_total_location_y / 8)
+				center_edge_mid_point[2] = 2 * (edge_total_location_z / 4) - (point_total_location_z / 8)
+			else:
+				center_edge_mid_point[0] = 2 * (edge_total_location_x / 3) - (point_total_location_x / 6)
+				center_edge_mid_point[1] = 2 * (edge_total_location_y / 3) - (point_total_location_y / 6)
+				center_edge_mid_point[2] = 2 * (edge_total_location_z / 3) - (point_total_location_z / 6)
+
 
 			# And now we can finally create a new BuildSurfaceEdge object and feed it the points
 			center_edge = BuildSurfaceEdge("NULL")
 			center_edge.SetStartPoint(raw_edges[0].GetMidPoint())
 			center_edge.SetEndPoint(raw_edges[2].GetMidPoint())
 			center_edge.SetMidPoint(center_edge_mid_point)
-			print("MID POINT : ")
-			print(center_edge_mid_point)
-			print("TOTAL POINT X: ")
-			print(point_total_location_x)
-			print("TOTAL EDGE X: ")
-			print(edge_total_location_x)
+
+			if not c_surface.IsQuad:
+				center_edge.SetStartPoint(raw_edges[0].GetEndPoint())
+				
 
 			# As for the other two edges we already have the data for those two...
 			# So we can feed it to the surface object...and append the surface object to a list...
@@ -297,7 +357,7 @@ class Reader():
 			c_surface.edge_b = center_edge
 			c_surface.edge_c = raw_edges[3]
 
-
+			c_surface.RawEdgeList = raw_edges
 
 			returnList.append(c_surface)
 
@@ -383,11 +443,6 @@ class Reader():
 		# 	c_surface.skin = skin_name
 		# 	c_surface.skin_id = skin_id
 		# 	returnList.append(c_surface)
-
-		print("---------[ SURFACE ]---------")
-		print("Original : " + surface.find("Data/String[@key='edges']").text)
-		for edge in raw_edges:
-			print("\t {}".format(edge.guid))
 
 		
 		print("{} blocks imported...\n{} components imported...\n{} blocks skipped".format(total_blocks, total_components, skipped_blocks))
