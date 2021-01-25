@@ -1,4 +1,4 @@
-![](https://img.shields.io/badge/Code%20Quality-Okay-green) 
+![](https://img.shields.io/badge/Code%20Quality-Okay-green) ![](https://img.shields.io/badge/Surface%20Blocks-Sorta%20Working-orange) 
 
 <img src="readme.assets/thumbnail_skin_update_git.png" alt="thumbnail_skin_update_git" style="zoom: 67%;" />
 
@@ -13,7 +13,7 @@ This is an addon for Blender to import Besiege Creations. Currently it works for
 ### Installation
 You can download a build from the [releases](https://github.com/arkangel-dev/BesiegeCreationImporter/releases) section, go to Blender `>` Top Bar `>` Edit `>` Add-ons `>` Install and navigate to the downloaded file. Then you can enable the addon from the Preferences window. If you want to install the addon from the current commit, you can open the files `__init__.py`, `bsgreader.py` and `blenapi.py` and set the variable `dev_mode` to False. You can find the variable at the beginning of each file. Then you can zip it all up and install
 
-> **Note :** The latest commit may not work correctly or might not even register properly. 
+> **Note :** The latest commit may not work correctly or might not even register at all. 
 
 
 
@@ -52,7 +52,6 @@ You can download a build from the [releases](https://github.com/arkangel-dev/Bes
 
 
 
-### Things that are not supported yet
+### Surface Blocks
 
-- Surface blocks
-- Short wooden poles and blocks
+I couldn't have implemented surface blocks without the help of [ProNou](https://github.com/Pro-Nou/). Check out his own version of the importer [here](https://github.com/Pro-Nou/BsgToOBJ). The surface block import code is not simply a one to one recreation of Pro-Nous code. The code in this repository was written from scratch to fit an object oriented style of coding, and its not perfect. So there might be some weird geometry produced when importing surfaces, particularly f,at surfaces with 3 control points

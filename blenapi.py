@@ -6,6 +6,7 @@ import json
 import time
 import xml.etree.ElementTree as ET
 import random
+import bmesh
 from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
@@ -325,6 +326,44 @@ class BlenderAPI():
 
 		# Generate the actual mesh based off the data...
 		mesh.from_pydata(mesh_vertex_list, [], face_list)
+
+		# Generate UV map...
+		mesh.uv_layers.new(name="base")
+		bm = bmesh.new()
+		bm.from_mesh(mesh)
+		bm.faces.ensure_lookup_table()
+		uv_layer = bm.loops.layers.uv[0]
+		x_l = len(curve_mid_points) - 1
+
+		count = 0
+		current_x = 0
+		total_len = int(math.pow(x_l, 2))
+		scale_down = 1/(len(curve_mid_points) - 1)
+
+		for current_face in reversed(range(total_len)):
+			bm.faces[current_face].loops[2][uv_layer].uv = (
+				(0 + count) * scale_down,
+				(0 + current_x) * scale_down
+			)
+			bm.faces[current_face].loops[1][uv_layer].uv = (
+				(1 + count) * scale_down,
+				(0 + current_x) * scale_down
+			)
+			bm.faces[current_face].loops[0][uv_layer].uv = (
+				(1 + count) * scale_down,
+				(1 + current_x) * scale_down
+			)
+			bm.faces[current_face].loops[3][uv_layer].uv = (
+				(0 + count) * scale_down,
+				(1 + current_x) * scale_down
+			)
+			count += 1
+			if count >= x_l:
+				count = 0
+				current_x += 1
+		bm.to_mesh(mesh)
+
+
 
 		# Create the Solidify and Edge Split modifiers. and smooth out the surface
 		mesh_object.modifiers.new("Solidify", 'SOLIDIFY')
