@@ -271,23 +271,41 @@ class BlenderAPI():
 
 
 	def BlockDrawTypeSurfaceType(self, surface:BuildSurface, vanilla_skins=False) -> 'Object':
-		print("Interpolating surface...")
+		'''
+		This function will generate a surface based off the data from a BuildSurface object.
+		Parameters:
+			surface : BuildSurface : Suface object containing the data
+			vanilla_skins : boolean : Should the surface be imported with vanilla skins?
+		'''
+		print("Interpolating surface {}...".format(surface.guid))
+
+		# Create mesh and give it an object instance...
 		mesh = bpy.data.meshes.new("BuildSurface_" + surface.guid)
 		mesh_object = bpy.data.objects.new(mesh.name, mesh)
 		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(mesh_object)
 
+		# We will store the points we will actually plot in this list
 		mesh_vertex_list = []
 		
+		# Generate a list start, end and mid points...
 		curve_start_points = self.GenerateCurve(surface.edge_a)
 		curve_mid_points = self.GenerateCurve(surface.edge_b)
 		curve_end_points = self.GenerateCurve(surface.edge_c)
 
+		# mesh_vertex_list.extend(curve_start_points)
+		# mesh_vertex_list.extend(curve_mid_points)
+		# mesh_vertex_list.extend(curve_end_points)
+		# self.MakeReferencePoint("CenterPoint_" + surface.guid, surface.edge_b.GetMidPoint())
+		# for edge in surface.RawEdgeList:
+		# 	self.MakeReferencePoint("StartPoint_" + edge.guid, edge.GetStartPoint())
+		# 	self.MakeReferencePoint("MidPoint_" + edge.guid, edge.GetMidPoint())
+		# 	self.MakeReferencePoint("EndPoint_" + edge.guid, edge.GetEndPoint())
 
-		for edge in surface.RawEdgeList:
-			self.MakeReferencePoint("StartPoint_" + edge.guid, edge.GetStartPoint())
-			self.MakeReferencePoint("MidPoint_" + edge.guid, edge.GetMidPoint())
-			self.MakeReferencePoint("EndPoint_" + edge.guid, edge.GetEndPoint())
-
+		
+		# Calculate the points based off the data from the curves generated previously
+		# The function will plot a curve with the start taken from curve_start_points,
+		# control point taken from curve_mid_points and the end point taken from curve_end_points.
+		# Each one will generated step by step
 		for i in range(0, len(curve_start_points)):
 			midpoint = self.GetMidpoint(curve_start_points[i], curve_end_points[i])
 			newpoint = [
@@ -301,11 +319,14 @@ class BlenderAPI():
 				curve_end_points[i]
 			]))
 
+		# Generate list of 4x4 points so that they can be used as a way to 
+		# map the faces of the mesh
 		face_list = self.GenerateFaceList(len(curve_mid_points))
 
-
+		# Generate the actual mesh based off the data...
 		mesh.from_pydata(mesh_vertex_list, [], face_list)
 
+		# Create the Solidify and Edge Split modifiers. and smooth out the surface
 		mesh_object.modifiers.new("Solidify", 'SOLIDIFY')
 		mesh_object.modifiers.new("Edge Split", 'EDGE_SPLIT')
 		mesh_object.modifiers["Solidify"].thickness = 0.075
@@ -316,6 +337,14 @@ class BlenderAPI():
 
 
 	def GenerateCurve(self, edge:BuildSurfaceEdge) -> list:
+		'''
+		Generates a curve. Not to be confused with GenerateCurvePoint. This function
+		will calculate the position of the center control point and generate a curve.
+		Parameters:
+			edge : BuildSurfaceEdge : The edge
+		Return : list : list of points
+		Exceptions : None
+		'''
 		midpoint = self.GetMidpoint(edge.GetStartPoint(), edge.GetEndPoint())
 		newpoint = [
 			midpoint[0] + (edge.GetMidPoint()[0] - midpoint[0]) * 2,
@@ -330,6 +359,13 @@ class BlenderAPI():
 
 			
 	def GenerateFaceList(self, chunk_size) -> list:
+		'''
+		Generates a list of points that can be used as faces.
+		Parameters:
+			chunk_size : int : size of the mesh in one axis
+		Returns : list : list of points
+		Exceptions : None
+		'''
 		point_array = range(0, chunk_size * chunk_size)
 		chunk_arr = [point_array[i:i + chunk_size] for i in range(0, len(point_array), chunk_size)]
 		return_list = []
@@ -343,6 +379,14 @@ class BlenderAPI():
 		return return_list
 
 	def CalculateCurvePoints(self, points, resolution=0.1) -> list:
+		'''
+		Calculates points of a curves and returns them.
+		Parameters:
+			points : list : list of co-ordinates used as the controls points
+			resolution : float : number of steps in the 3D curve
+		Returns : list : list of co-ordinates
+		Exceptions : None
+		'''
 		t_points = np.arange(0, 1, resolution)
 		curve_set = Bezier.Curve(t_points, np.array(points))
 		return_l = curve_set.tolist()
@@ -350,8 +394,17 @@ class BlenderAPI():
 		return return_l
 
 		
-	def MakeReferencePoint(self, name, location, size=0.25, empty_type="PLAIN_AXES") -> None:
-		# pass
+	def MakeReferencePoint(self, name:str, location:list, size=0.25, empty_type="PLAIN_AXES") -> None:
+		'''
+		This function creates an empty. The empty can be useful for marking a point in 3D space.
+		Parameters:
+			name : string : name of empty
+			location : list : co-ordinates for point
+			size : float : size of empty
+			empty_type : string : Type of empty. Check Blender API docs for a list of types
+		Returns : None
+		Exceptions : None
+		'''
 		empty = bpy.data.objects.new(name, None)
 		empty.empty_display_size = size
 		empty.empty_display_type = empty_type
@@ -359,6 +412,15 @@ class BlenderAPI():
 		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(empty)
 
 	def GetMidpoint(self, start:list, end:list) -> list:
+		'''
+		This function gets the mid point between 2 points in 3D space. Will return a point in the form of
+		a list of length 3.
+		Parameters:
+			start : list : list of co-ordiantes for the start point
+			end : list : list of co-ordinates for the end point
+		Returns : None
+		Exceptions : None
+		'''
 		locx = (end[0] + start[0]) / 2
 		locy = (end[1] + start[1]) / 2
 		locz = (end[2] + start[2]) / 2

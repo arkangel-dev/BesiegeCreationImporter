@@ -263,8 +263,11 @@ class Reader():
 
 
 
-			# Used surface indexes are 1 and 3
-
+			# This code segment makes sure that no curtain effects are produced.
+			# curtain effect is when the addon fails to align the points in the 3 
+			# edges needed to generate the surface mesh
+			# The curtain effect works differently for Quad surfaces from surfaces with
+			# 3 sides
 			if not c_surface.IsQuad:
 				r1_inverted = r2_invered = False
 				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
@@ -281,39 +284,19 @@ class Reader():
 					raw_edges[1].InvertPointLocations()
 					raw_edges[3].InvertPointLocations()
 			else:
-			
-				if raw_edges[1].GetEndPoint() != raw_edges[0].GetStartPoint():
-					raw_edges[1].InvertPointLocations()
-
-				if raw_edges[2].GetEndPoint() != raw_edges[1].GetStartPoint():
-					raw_edges[2].InvertPointLocations()
-
-				if raw_edges[3].GetEndPoint() != raw_edges[2].GetStartPoint():
-					raw_edges[3].InvertPointLocations()
-
-				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
-					raw_edges[3].InvertPointLocations()
-
-				if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint():
-					raw_edges[1].InvertPointLocations()
-
+				if raw_edges[1].GetEndPoint() != raw_edges[0].GetStartPoint(): raw_edges[1].InvertPointLocations()
+				if raw_edges[2].GetEndPoint() != raw_edges[1].GetStartPoint(): raw_edges[2].InvertPointLocations()
+				if raw_edges[3].GetEndPoint() != raw_edges[2].GetStartPoint(): raw_edges[3].InvertPointLocations()
+				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint(): raw_edges[3].InvertPointLocations()
+				if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint(): raw_edges[1].InvertPointLocations()
 				raw_edges[3].InvertPointLocations()
 
-
-
-
-
-			# raw_edges[1].InvertPointLocations()
-			# raw_edges[3].InvertPointLocations()
-
-
-
-
-
 			if not c_surface.IsQuad:
-				raw_edges[0].IsFalseEdge = True
+				raw_edges[3].IsFalseEdge = True
 
-			# Add it all up...
+			# Add up all the surfaces edge location as well as
+			# the point locations. If the surface is not a Quad,
+			# then skip the edge position and the point positions
 			for edge in raw_edges:
 				if not edge.IsFalseEdge:
 					point_total_location_x += edge.GetEndPoint()[0]
@@ -330,7 +313,9 @@ class Reader():
 
 
 			# Then do some mathematical magic...
-
+			# Note that this formula is different for Quads.
+			# because the number of points that needs to split apart
+			# are differnet 
 			if c_surface.IsQuad:
 				center_edge_mid_point[0] = 2 * (edge_total_location_x / 4) - (point_total_location_x / 8)
 				center_edge_mid_point[1] = 2 * (edge_total_location_y / 4) - (point_total_location_y / 8)
@@ -347,8 +332,14 @@ class Reader():
 			center_edge.SetEndPoint(raw_edges[2].GetMidPoint())
 			center_edge.SetMidPoint(center_edge_mid_point)
 
+			# if the surface is not a quad, then check if the edge_a and edge_b's start and end points
+			# align. if they do not align, use the Start point of the center edge. Otherwise use the end
+			# point. This will result with all the points converging to a single point...
 			if not c_surface.IsQuad:
-				center_edge.SetStartPoint(raw_edges[0].GetEndPoint())
+				if raw_edges[1].GetStartPoint() != raw_edges[0].GetEndPoint():
+					center_edge.SetStartPoint(raw_edges[0].GetStartPoint())
+				else:
+					center_edge.SetStartPoint(raw_edges[0].GetEndPoint())
 				
 
 			# As for the other two edges we already have the data for those two...
@@ -356,82 +347,9 @@ class Reader():
 			c_surface.edge_a = raw_edges[1]
 			c_surface.edge_b = center_edge
 			c_surface.edge_c = raw_edges[3]
-
 			c_surface.RawEdgeList = raw_edges
-
 			returnList.append(c_surface)
-
-		# edges = []
-		# for edge in surface_data_edges:
-		# 	c_edge = BuildSurfaceEdge()
-		# 	start_guid = edge.find("Data/String[@key='start']").text
-		# 	end_guid = edge.find("Data/String[@key='end']").text
-		# 	s_f = False
-		# 	e_f = False
-
-
-		# 	for point in surface_data_nodes:
-		# 		if point.get('guid') == start_guid:
-		# 			s_f = True
-		# 			c_edge.sx = float(point.find("Transform/Position").get('x'))
-		# 			c_edge.sy = float(point.find("Transform/Position").get('z'))
-		# 			c_edge.sz = float(point.find("Transform/Position").get('y'))
-				
-		# 		if point.get('guid') == end_guid:
-		# 			e_f = True
-		# 			c_edge.ex = float(point.find('Transform/Position').get('x'))
-		# 			c_edge.ey = float(point.find('Transform/Position').get('z'))
-		# 			c_edge.ez = float(point.find('Transform/Position').get('y'))
-		# 		if s_f and e_f: break
-
-		# 	c_edge.x = float(edge.find('Transform/Position').get('x'))
-		# 	c_edge.y = float(edge.find('Transform/Position').get('z'))
-		# 	c_edge.z = float(edge.find('Transform/Position').get('y'))
-		# 	c_edge.guid = edge.get('guid')
-		# 	edges.append(c_edge)
-
-
-	
-		
-		# for surface in surface_data_surfaces:
-		# 	c_surface = None
-		# 	c_surface = Surface(surface.get('guid'))
-		# 	surface_edge_guids = surface.find("Data/String[@key='edges']").text.split("|")
-
-		# 	if (len(surface_edge_guids) == 3):
-		# 		surface_edge_guids.append(surface_edge_guids[0])
-		# 		c_surface.IsQuad = False
-
-		# 	U_Lines_GUID = [surface_edge_guids[0], surface_edge_guids[2]]
-		# 	V_Lines_GUID = [surface_edge_guids[1], surface_edge_guids[3]]
-
-
-
-		# 	for edge in edges:
-		# 		if edge.guid in surface_edge_guids:
-		# 			c_surface.edges.append(edge)
-
-		# 	# 	if edge.guid in U_Lines_GUID:
-		# 	# 		c_surface.U_Lines.append(edge)
-
-		# 	# 	if edge.guid in V_Lines_GUID:
-		# 	# 		c_surface.V_Lines.append(edge)
-
-		# 	for guid in V_Lines_GUID:
-		# 		for edge in edges:
-		# 			if guid == edge.guid:
-		# 				c_surface.V_Lines.append(copy.copy(edge))
-		# 			if edge.guid == V_Lines_GUID[1] and not c_surface.IsQuad:
-		# 				edge.Skip = True
-		# 				edge.LocalizePoints()
-
-
-					
-
-		# 	for guid in U_Lines_GUID:
-		# 		for edge in edges:
-		# 			if guid == edge.guid:
-		# 				c_surface.U_Lines.append(edge)
+			total_blocks += 1
 
 
 		# 	try:
