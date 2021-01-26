@@ -48,7 +48,10 @@ class BlenderAPI():
 	setting_hide_parent_empties = False
 	setting_use_node_groups = False
 	setting_merge_decor_blocks = True
+	setting_skip_surface_blocks = False
 	setting_brace_threshhold = 0.5
+	setting_surface_resolution = 0.1
+	setting_surface_thickness_multiplier = 0.0
 	setting_clean_up_action = 'DO_NOTHING'
 	setting_grouping_mode = 'SAME_CONFIG'
 	setting_node_setup = 'PRINCIPLED_BDSF'
@@ -62,7 +65,23 @@ class BlenderAPI():
 		self.custom_block_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'CustomBlocks')
 		if dev_mode: self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
 
-	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, merge_decor_blocks=False, use_node_groups=False, node_grouping_mode='SAME_CONFIG', node_group_setup='PRINCIPLED_BDSF', line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+	def ImportCreation(
+			self,
+			vanilla_skins=False,
+			create_parent=False,
+			generate_material=True, 
+			merge_decor_blocks=False,
+			use_node_groups=False,
+			join_line_components=False,
+			hide_parent_empties=True,
+			skip_surfaces=False,
+			node_grouping_mode='SAME_CONFIG',
+			node_group_setup='PRINCIPLED_BDSF',
+			line_type_cleanup='DO_NOTHING',
+			bracethreshold=0.5,
+			surface_block_resolution=0.1,
+			surface_block_thickness_mult=0.0
+		) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -83,6 +102,9 @@ class BlenderAPI():
 		self.setting_grouping_mode = node_grouping_mode
 		self.setting_node_setup = node_group_setup
 		self.setting_merge_decor_blocks = merge_decor_blocks
+		self.setting_surface_resolution = surface_block_resolution
+		self.setting_surface_thickness_multiplier = surface_block_thickness_mult
+		self.setting_skip_surface_blocks = skip_surfaces
 
 		# First we'll reset the object history because if we imported a model before this cycle,
 		# the import model methods will try to duplicate objects that does not exist
@@ -132,8 +154,9 @@ class BlenderAPI():
 		# There is also the "surface type block". But we dont speak of that... (╬▔皿▔)╯	
 		# Scratch that... ProNou has finished the surface blocks so I have an idea how I can finish up
 		# surface blocks. Its going to be fucking nightmare (ノ｀Д)ノ
-		for block in surface_draw:
-			self.BlockDrawTypeSurfaceType(block, vanilla_skins)
+		if not self.setting_skip_surface_blocks:
+			for block in surface_draw:
+				self.BlockDrawTypeSurfaceType(block, vanilla_skins)
 		
 		# Then we get rid of the temp objects because we no longer need them :)
 		for block in self.temp_obj_list:
@@ -318,7 +341,7 @@ class BlenderAPI():
 				curve_start_points[i],
 				newpoint,
 				curve_end_points[i]
-			]))
+			], self.setting_surface_resolution))
 
 		# Generate list of 4x4 points so that they can be used as a way to 
 		# map the faces of the mesh
@@ -394,7 +417,7 @@ class BlenderAPI():
 			edge.GetStartPoint(),
 			newpoint,
 			edge.GetEndPoint()
-		])
+		], self.setting_surface_resolution)
 
 			
 	def GenerateFaceList(self, chunk_size) -> list:

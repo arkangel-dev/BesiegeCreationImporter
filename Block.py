@@ -228,11 +228,25 @@ class BuildSurface():
 	guid = ""
 	IsQuad = True
 	RawEdgeList = []
+	thickness = 0.0
+
+	# skin data
+	skin_name = "Template"
+	skin_id = 0
+
+	# color data
+	UsePaint = False
+	col_rgb = [0,0,0]
+	saturation = 0.0
+	luminosity = 0.0
+
 
 	def __init__(self, guid:str) -> None:
 		self.guid = guid
 		self.IsQuad = True
+		self.UsePaint = False
 		self.EdgeList = []
+		self.thickness = 0.0
 	
 	def SetEdgeData(self, edges:list) -> None:
 		self.edge_a = edges[0]

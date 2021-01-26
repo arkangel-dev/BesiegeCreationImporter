@@ -54,4 +54,4 @@ You can download a build from the [releases](https://github.com/arkangel-dev/Bes
 
 ### Surface Blocks
 
-I couldn't have implemented surface blocks without the help of [ProNou](https://github.com/Pro-Nou/). Check out his own version of the importer [here](https://github.com/Pro-Nou/BsgToOBJ). The surface block import code is not simply a one to one recreation of Pro-Nous code. The code in this repository was written from scratch to fit an object oriented style of coding, and its not perfect. So there might be some weird geometry produced when importing surfaces, particularly f,at surfaces with 3 control points
+I couldn't have implemented surface blocks without the help of [ProNou](https://github.com/Pro-Nou/). Check out his own version of the importer [here](https://github.com/Pro-Nou/BsgToOBJ). The surface block import code is not simply a one to one recreation of Pro-Nous code. The code in this repository was written from scratch to fit an object oriented style of coding, and its not perfect. So there might be some weird geometry produced when importing surfaces, particularly flat surfaces with 3 control points

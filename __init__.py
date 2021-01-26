@@ -109,6 +109,21 @@ class LineTypeObjectSettings(bpy.types.Panel):
 		cleanup_row.prop(context.scene, 'bsgimp_line_type_cleanup_options')
 		cleanup_row.enabled = context.scene.bsgimp_line_type_join_components
 
+class BuildSurfaceSettings(bpy.types.Panel):
+	bl_label = 'Surface Blocks'
+	bl_idname = 'PT_SkinSettingsPanel'
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'UI'
+	bl_category = 'Besiege'
+	bl_parent_id = 'PT_MainPanel'
+	bl_options = {'DEFAULT_CLOSED'}
+
+	def draw(self, context):
+		layout = self.layout
+		layout.row().prop(context.scene, 'bsgimp_surface_type_resolution')
+		layout.row().prop(context.scene, 'bsgimp_surface_type_thickness_multiplier')
+		layout.row().prop(context.scene, 'bsgimp_surface_type_skip_surfaces')
+
 
 class SkinSettings(bpy.types.Panel):
 	bl_label = 'Skin Settings'
@@ -164,8 +179,10 @@ class ImportOperator(bpy.types.Operator):
 				node_grouping_mode=context.scene.bsgimp_make_unique_node_groups,
 				use_node_groups=context.scene.bsgimp_use_node_group,
 				node_group_setup=context.scene.bsgimp_node_set,
-				merge_decor_blocks=context.scene.bsgimp_merge_decor_components
-				
+				merge_decor_blocks=context.scene.bsgimp_merge_decor_components,
+				surface_block_resolution=context.scene.bsgimp_surface_type_resolution,
+				surface_block_thickness_mult=context.scene.bsgimp_surface_type_thickness_multiplier,
+				skip_surfaces=context.scene.bsgimp_surface_type_skip_surfaces
 			)
 			et_t = time.time()
 			for material in return_data['imported_materials']:
@@ -277,6 +294,7 @@ def register():
 	bpy.utils.register_class(GeneralSettings)
 	bpy.utils.register_class(SkinSettings)
 	bpy.utils.register_class(LineTypeObjectSettings)
+	bpy.utils.register_class(BuildSurfaceSettings)
 	bpy.utils.register_class(SettingsPanel)
 	bpy.utils.register_class(SaveGlobalConfiguration)
 	bpy.utils.register_class(ImportOperator)
@@ -284,6 +302,7 @@ def register():
 	bpy.utils.register_class(PurgeableMaterialList)
 	bpy.utils.register_class(SelectableImportedObjectList)
 	bpy.utils.register_class(SelectImportedObjects)
+
 	
 	# register properties
 	# paths
@@ -329,6 +348,10 @@ def register():
 		)
 	)
 
+	bpy.types.Scene.bsgimp_surface_type_resolution = bpy.props.FloatProperty(name = 'Resolution', default=0.1, description='Resolution of the surface block. Lower values will generate meshes with higher resolution. Its recommeneded that you leave this at 0.1')
+	bpy.types.Scene.bsgimp_surface_type_thickness_multiplier = bpy.props.FloatProperty(name = 'Thickeness Multiplier', default=1, description='This value will be multiplied with the thickness value read from BSG file before being applied to the solidifier modifier')
+	bpy.types.Scene.bsgimp_surface_type_skip_surfaces = bpy.props.BoolProperty(name = 'Skip Surfaces', default=False, description='If checked the addon will skip surface blocks')
+
 	bpy.types.Scene.bsgimp_purgeable_materials = bpy.props.CollectionProperty(type=PurgeableMaterialList)
 	bpy.types.Scene.bsgimp_selectable_imports = bpy.props.CollectionProperty(type=SelectableImportedObjectList)
 
@@ -364,6 +387,9 @@ def unregister():
 	del bpy.types.Scene.bsgimp_line_type_cleanup_options
 	del bpy.types.Scene.bsgimp_selectable_imports
 	del bpy.types.Scene.bsgimp_merge_decor_components
+	del bpy.types.Scene.bsgimp_surface_type_resolution
+	del bpy.types.Scene.bsgimp_surface_type_thickness_multiplier
+	del bpy.types.Scene.bsgimp_surface_type_skip_surfaces
 	
 
 #This is required in order for the script to run in the text editor   

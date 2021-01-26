@@ -343,11 +343,30 @@ class Reader():
 				
 
 			# As for the other two edges we already have the data for those two...
-			# So we can feed it to the surface object...and append the surface object to a list...
+			# So we can feed it to the surface object...
 			c_surface.edge_a = raw_edges[1]
 			c_surface.edge_b = center_edge
 			c_surface.edge_c = raw_edges[3]
 			c_surface.RawEdgeList = raw_edges
+
+			# define the color data for the surface blocks...
+			c_surface.thickness = surface.find("Data/Single[@key='bmt-thickness']").text
+			c_surface.saturation = surface.find("Data/Single[@key='bmt-sat']").text
+			c_surface.luminosity = surface.find("Data/Single[@key='bmt-lum']").text
+			c_surface.UsePaint = surface.find("Data/Boolean[@key='bmt-painted']").text
+
+			# define the skin data
+			try:
+				c_surface.skin_id = surface.find('Settings/Skin').get('id')
+				c_surface.skin_name = surface.find('Settings/Skin').get('name')
+			except:			
+				c_surface.skin_id = 'Template'
+				c_surface.skin_name = 'Template'
+			if (current_comp_inst.skin_name == 'default'):
+				c_surface.skin_id = 'Template'
+				c_surface.skin_name = 'Template'
+
+			# Add it to the list and increment the number of blocks imported
 			returnList.append(c_surface)
 			total_blocks += 1
 
