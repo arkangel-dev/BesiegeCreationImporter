@@ -81,7 +81,8 @@ class MaterialList():
 		if glass: material_name += "Glass"
 		
 
-		if surface.UsePaint: material_name += surface.guid
+		if surface.UsePaint: material_name += "Painted_" + surface.guid
+
 		lookup = MaterialList.ReturnPreExisting(material_name)
 		if lookup: return lookup
 		m = bpy.data.materials.new(name=material_name)
@@ -103,6 +104,11 @@ class MaterialList():
 		hsv_node.inputs[0].default_value = hue_val / 360
 		hsv_node.inputs[1].default_value = surface.saturation
 		hsv_node.inputs[2].default_value = surface.luminosity
+
+		mix_node.location = (-40, 80)
+		node_group_node.location = (120, 80)
+		hsv_node.location = (-200, -40)
+		image_texture_node.location = (-460, 100)
 
 		m.node_tree.links.new(image_texture_node.outputs[0], mix_node.inputs[1])
 		m.node_tree.links.new(mix_node.outputs[0], node_group_node.inputs[0])
