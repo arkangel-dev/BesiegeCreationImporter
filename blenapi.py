@@ -156,7 +156,7 @@ class BlenderAPI():
 		# surface blocks. Its going to be fucking nightmare (ノ｀Д)ノ
 		if not self.setting_skip_surface_blocks:
 			for block in surface_draw:
-				self.BlockDrawTypeSurfaceType(block, vanilla_skins)
+				imported_list.append(self.BlockDrawTypeSurfaceType(block, vanilla_skins))
 		
 		# Then we get rid of the temp objects because we no longer need them :)
 		for block in self.temp_obj_list:
@@ -391,10 +391,16 @@ class BlenderAPI():
 		# Create the Solidify and Edge Split modifiers. and smooth out the surface
 		mesh_object.modifiers.new("Solidify", 'SOLIDIFY')
 		mesh_object.modifiers.new("Edge Split", 'EDGE_SPLIT')
-		mesh_object.modifiers["Solidify"].thickness = 0.075
+		mesh_object.modifiers["Solidify"].thickness = surface.thickness * self.setting_surface_thickness_multiplier
 		mesh_object.modifiers["Solidify"].offset = 0.0
+
+		if self.setting_GenerateMaterial:
+			mat = self.GenerateSurfaceBlockMaterial(surface)
+			mesh_object.active_material = mat
+		
 		for f in mesh.polygons:
 			f.use_smooth = True
+		return mesh_object
 
 
 
@@ -775,9 +781,25 @@ class BlenderAPI():
 			return False
 		return False
 
-	def CheckIfMaterialExists(block, skin_name):
-		mat_name = block.base_source + skin_name + "Material"
-		return str(mat_name) in bpy.data.materials.keys()
+	# def CheckIfMaterialExists(block, skin_name):
+	# 	mat_name = block.base_source + skin_name + "Material"
+	# 	return str(mat_name) in bpy.data.materials.keys()
+
+	def GenerateSurfaceBlockMaterial(self, surface:BuildSurface):
+		mat_name = "SurfaceBlock-{}".format(surface.skin_name)
+
+		if self.setting_grouping_mode.__eq__('SAME_CONFIG'): node_group_name = 'Surface-GlobalConfigNodeSetup'
+		elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'): node_group_name = 'Surface-{}SkinNodeSetup'.format(surface.skin_name)
+		else: node_group_name = 'SurfaceBlockNodeGoup'
+		node_group = None
+		try: node_group = bpy.data.node_groups[node_group_name]
+		except KeyError: node_group = NodeGroups().SurfaceBlockPrincipledBDSF(name=node_group_name, custom_block_dir=self.custom_block_dir)
+		texture_path = self.FetchSkinFile("BuildSurface", surface.skin_id, surface.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile("BuildSurface", "0", "Template", only_texture=True)
+		final_m = MaterialList.NodeGroupSurfaceMaterial(texture_path, mat_name, node_group, surface)
+		self.imported_materials.append(final_m)
+		return final_m
+		
+
 
 	def GenerateMaterial(self, block:Block, component:Component, skin_name:str) -> 'Material':
 		'''
@@ -792,36 +814,25 @@ class BlenderAPI():
 		# Ok time to generate the material. So first We generate the material and then we return it... Its that simple
 		# TODO : Add NodeGroup setup
 
-
-
 		mat_name = component.base_source + skin_name + "Material"
 		search_name = mat_name + "NodeGrouped" if self.setting_use_node_groups else ""
 		if str(search_name) in bpy.data.materials.keys(): return bpy.data.materials[search_name]
-		# print("Cannot find material {}".format(mat_name))
 		texture_path = self.FetchSkinFile(block.code_name, component.skin_id, component.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile(block.code_name, "0", "Template", only_texture=True)
 
 		if self.setting_use_node_groups:
 			node_group_name = ''
-			if self.setting_grouping_mode.__eq__('SAME_CONFIG'):
-				node_group_name = 'GlobalConfigNodeSetup'
-			elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'):
-				node_group_name = '{}SkinNodeSetup'.format(skin_name)
-			elif self.setting_grouping_mode.__eq__('FOR_EACH_BLOCK'):
-				node_group_name = '{}BlockNodeSetup'.format(component.base_source)
+			if self.setting_grouping_mode.__eq__('SAME_CONFIG'): node_group_name = 'GlobalConfigNodeSetup'
+			elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'): node_group_name = '{}SkinNodeSetup'.format(skin_name)
+			elif self.setting_grouping_mode.__eq__('FOR_EACH_BLOCK'): node_group_name = '{}BlockNodeSetup'.format(component.base_source)
 
 			node_group = None
 			
-			try:
-				node_group = bpy.data.node_groups[node_group_name] 
-			except KeyError:
-				node_group = NodeGroups().SimplePrincipledBDSF(name=node_group_name)
-			final_m = MaterialList().NodeGroupMaterial(component, texture_path, mat_name, node_group)
+			try: node_group = bpy.data.node_groups[node_group_name] 
+			except KeyError: node_group = NodeGroups().SimplePrincipledBDSF(name=node_group_name)
+			final_m = MaterialList.NodeGroupMaterial(texture_path, mat_name, node_group)
 			self.imported_materials.append(final_m)
 			return final_m
 		else:
-			final_m = MaterialList().DefaultMaterial(component, texture_path, mat_name)
+			final_m = MaterialList.DefaultMaterial(component, texture_path, mat_name)
 			self.imported_materials.append(final_m)
 			return final_m
-
-			# BraceSectionAAl-ShadowMaterial
-			# BraceSectionAAl-ShadowMaterialNodeGrouped

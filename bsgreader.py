@@ -5,7 +5,6 @@ import bpy
 import copy
 
 
-
 dev_mode = True
 
 if dev_mode:
@@ -184,203 +183,211 @@ class Reader():
 
 
 		for surface in surface_data_surfaces:
-			guid = surface.get('guid')
-
-			# Split the string to get a list of the edge GUIDs
-			surface_edge_guids = surface.find("Data/String[@key='edges']").text.split("|")
-
-			c_surface = BuildSurface(guid)
-			if len(surface_edge_guids) == 3:
-				# If we dont have enough edges, we can take a GUID
-				# from the list and add it to the end of the list
-				surface_edge_guids.append(surface_edge_guids[0])
-				c_surface.IsQuad = False
-
-			raw_edges = []
-			# Ok so in the last version what went wrong was that the we needed the edges in the same order
-			# that they were defined in the surface tag. But I simply used a for loop iterating through the
-			# edge tags and checking if their guids were in the list of GUIDs from the surface block tag...
-			# Should've seen that coming because ProNou did warn me... I really need to start reading the 
-			# instructions before starting to code...
-			for edge_guid in surface_edge_guids:
-				for edge in surface_data_edges:
-					guid = edge.get('guid')
-					if guid != edge_guid: continue
-
-					c_edge = BuildSurfaceEdge(guid)		
-					start_guid = edge.find("Data/String[@key='start']").text
-					end_guid = edge.find("Data/String[@key='end']").text
-
-					start_point_found = False
-					end_point_found = False
-					
-					# Find the pointss that define the start and end point of the edge.
-					for point in surface_data_nodes:
-						if start_point_found and end_point_found: break
-						if point.get('guid') == start_guid:
-							start_point_found = True
-							c_edge.SetStartPoint([
-								float(point.find("Transform/Position").get('x')),
-								float(point.find("Transform/Position").get('z')),
-								float(point.find("Transform/Position").get('y'))
-							])
-						if point.get('guid') == end_guid:
-							end_point_found = True
-							c_edge.SetEndPoint([
-								float(point.find("Transform/Position").get('x')),
-								float(point.find("Transform/Position").get('z')),
-								float(point.find("Transform/Position").get('y'))
-							])
-
-					# Then set the mid point for the edge...
-					c_edge.SetMidPoint([
-						float(edge.find('Transform/Position').get('x')),
-						float(edge.find('Transform/Position').get('z')),
-						float(edge.find('Transform/Position').get('y'))
-					])
-
-					# Add it to the list of raw edges
-					raw_edges.append(c_edge)
-
-			# Now that we have all the raw data edge data,
-			# We can use that data to create the U edges and save it...
-			# First we'll calculate the center edge. Because that's more complicated
-			# than the other two...
-			# First we'll need to get the center point...
-
-			center_edge_mid_point = [0,0,0]
-
-			# Calculate the total location of the points and edges...
-			# Initilze the variables for the location
-			point_total_location_x = 0
-			point_total_location_y = 0
-			point_total_location_z = 0
-			
-			# Initilize the variable for the edges
-			edge_total_location_x = 0
-			edge_total_location_y = 0
-			edge_total_location_z = 0
-
-
-
-			# This code segment makes sure that no curtain effects are produced.
-			# curtain effect is when the addon fails to align the points in the 3 
-			# edges needed to generate the surface mesh
-			# The curtain effect works differently for Quad surfaces from surfaces with
-			# 3 sides
-			if not c_surface.IsQuad:
-				r1_inverted = r2_invered = False
-				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
-					raw_edges[3].InvertPointLocations()
-					r1_inverted = True
-
-				if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint():
-					raw_edges[1].InvertPointLocations()
-					r2_invered = True
-
-				raw_edges[3].InvertPointLocations()
-
-				if r1_inverted and r2_invered:
-					raw_edges[1].InvertPointLocations()
-					raw_edges[3].InvertPointLocations()
-			else:
-				if raw_edges[1].GetEndPoint() != raw_edges[0].GetStartPoint(): raw_edges[1].InvertPointLocations()
-				if raw_edges[2].GetEndPoint() != raw_edges[1].GetStartPoint(): raw_edges[2].InvertPointLocations()
-				if raw_edges[3].GetEndPoint() != raw_edges[2].GetStartPoint(): raw_edges[3].InvertPointLocations()
-				if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint(): raw_edges[3].InvertPointLocations()
-				if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint(): raw_edges[1].InvertPointLocations()
-				raw_edges[3].InvertPointLocations()
-
-			if not c_surface.IsQuad:
-				raw_edges[3].IsFalseEdge = True
-
-			# Add up all the surfaces edge location as well as
-			# the point locations. If the surface is not a Quad,
-			# then skip the edge position and the point positions
-			for edge in raw_edges:
-				if not edge.IsFalseEdge:
-					point_total_location_x += edge.GetEndPoint()[0]
-					point_total_location_y += edge.GetEndPoint()[1]
-					point_total_location_z += edge.GetEndPoint()[2]
-
-					point_total_location_x += edge.GetStartPoint()[0]
-					point_total_location_y += edge.GetStartPoint()[1]
-					point_total_location_z += edge.GetStartPoint()[2]
-
-					edge_total_location_x += edge.GetMidPoint()[0]
-					edge_total_location_y += edge.GetMidPoint()[1]
-					edge_total_location_z += edge.GetMidPoint()[2]
-
-
-			# Then do some mathematical magic...
-			# Note that this formula is different for Quads.
-			# because the number of points that needs to split apart
-			# are differnet 
-			if c_surface.IsQuad:
-				center_edge_mid_point[0] = 2 * (edge_total_location_x / 4) - (point_total_location_x / 8)
-				center_edge_mid_point[1] = 2 * (edge_total_location_y / 4) - (point_total_location_y / 8)
-				center_edge_mid_point[2] = 2 * (edge_total_location_z / 4) - (point_total_location_z / 8)
-			else:
-				center_edge_mid_point[0] = 2 * (edge_total_location_x / 3) - (point_total_location_x / 6)
-				center_edge_mid_point[1] = 2 * (edge_total_location_y / 3) - (point_total_location_y / 6)
-				center_edge_mid_point[2] = 2 * (edge_total_location_z / 3) - (point_total_location_z / 6)
-
-
-			# And now we can finally create a new BuildSurfaceEdge object and feed it the points
-			center_edge = BuildSurfaceEdge("NULL")
-			center_edge.SetStartPoint(raw_edges[0].GetMidPoint())
-			center_edge.SetEndPoint(raw_edges[2].GetMidPoint())
-			center_edge.SetMidPoint(center_edge_mid_point)
-
-			# if the surface is not a quad, then check if the edge_a and edge_b's start and end points
-			# align. if they do not align, use the Start point of the center edge. Otherwise use the end
-			# point. This will result with all the points converging to a single point...
-			if not c_surface.IsQuad:
-				if raw_edges[1].GetStartPoint() != raw_edges[0].GetEndPoint():
-					center_edge.SetStartPoint(raw_edges[0].GetStartPoint())
-				else:
-					center_edge.SetStartPoint(raw_edges[0].GetEndPoint())
-				
-
-			# As for the other two edges we already have the data for those two...
-			# So we can feed it to the surface object...
-			c_surface.edge_a = raw_edges[1]
-			c_surface.edge_b = center_edge
-			c_surface.edge_c = raw_edges[3]
-			c_surface.RawEdgeList = raw_edges
-
-			# define the color data for the surface blocks...
-			c_surface.thickness = surface.find("Data/Single[@key='bmt-thickness']").text
-			c_surface.saturation = surface.find("Data/Single[@key='bmt-sat']").text
-			c_surface.luminosity = surface.find("Data/Single[@key='bmt-lum']").text
-			c_surface.UsePaint = surface.find("Data/Boolean[@key='bmt-painted']").text
-
-			# define the skin data
 			try:
-				c_surface.skin_id = surface.find('Settings/Skin').get('id')
-				c_surface.skin_name = surface.find('Settings/Skin').get('name')
-			except:			
-				c_surface.skin_id = 'Template'
-				c_surface.skin_name = 'Template'
-			if (current_comp_inst.skin_name == 'default'):
-				c_surface.skin_id = 'Template'
-				c_surface.skin_name = 'Template'
+				guid = surface.get('guid')
 
-			# Add it to the list and increment the number of blocks imported
-			returnList.append(c_surface)
-			total_blocks += 1
+				# Split the string to get a list of the edge GUIDs
+				surface_edge_guids = surface.find("Data/String[@key='edges']").text.split("|")
+
+				c_surface = BuildSurface(guid)
+				if len(surface_edge_guids) == 3:
+					# If we dont have enough edges, we can take a GUID
+					# from the list and add it to the end of the list
+					surface_edge_guids.append(surface_edge_guids[0])
+					c_surface.IsQuad = False
+
+				raw_edges = []
+				# Ok so in the last version what went wrong was that the we needed the edges in the same order
+				# that they were defined in the surface tag. But I simply used a for loop iterating through the
+				# edge tags and checking if their guids were in the list of GUIDs from the surface block tag...
+				# Should've seen that coming because ProNou did warn me... I really need to start reading the 
+				# instructions before starting to code...
+				for edge_guid in surface_edge_guids:
+					for edge in surface_data_edges:
+						guid = edge.get('guid')
+						if guid != edge_guid: continue
+
+						c_edge = BuildSurfaceEdge(guid)		
+						start_guid = edge.find("Data/String[@key='start']").text
+						end_guid = edge.find("Data/String[@key='end']").text
+
+						start_point_found = False
+						end_point_found = False
+						
+						# Find the pointss that define the start and end point of the edge.
+						for point in surface_data_nodes:
+							if start_point_found and end_point_found: break
+							if point.get('guid') == start_guid:
+								start_point_found = True
+								c_edge.SetStartPoint([
+									float(point.find("Transform/Position").get('x')),
+									float(point.find("Transform/Position").get('z')),
+									float(point.find("Transform/Position").get('y'))
+								])
+							if point.get('guid') == end_guid:
+								end_point_found = True
+								c_edge.SetEndPoint([
+									float(point.find("Transform/Position").get('x')),
+									float(point.find("Transform/Position").get('z')),
+									float(point.find("Transform/Position").get('y'))
+								])
+
+						# Then set the mid point for the edge...
+						c_edge.SetMidPoint([
+							float(edge.find('Transform/Position').get('x')),
+							float(edge.find('Transform/Position').get('z')),
+							float(edge.find('Transform/Position').get('y'))
+						])
+
+						# Add it to the list of raw edges
+						raw_edges.append(c_edge)
+
+				# Now that we have all the raw data edge data,
+				# We can use that data to create the U edges and save it...
+				# First we'll calculate the center edge. Because that's more complicated
+				# than the other two...
+				# First we'll need to get the center point...
+
+				center_edge_mid_point = [0,0,0]
+
+				# Calculate the total location of the points and edges...
+				# Initilze the variables for the location
+				point_total_location_x = 0
+				point_total_location_y = 0
+				point_total_location_z = 0
+				
+				# Initilize the variable for the edges
+				edge_total_location_x = 0
+				edge_total_location_y = 0
+				edge_total_location_z = 0
 
 
-		# 	try:
-		# 		skin_name = surface.find("Settings/Skin").get("name")
-		# 		skin_id = surface.find("Settings/Skin").get("id")
-		# 	except:
-		# 		skin_name = "Template"
-		# 		skin_id = "Template"
-		# 	c_surface.skin = skin_name
-		# 	c_surface.skin_id = skin_id
-		# 	returnList.append(c_surface)
 
+				# This code segment makes sure that no curtain effects are produced.
+				# curtain effect is when the addon fails to align the points in the 3 
+				# edges needed to generate the surface mesh
+				# The curtain effect works differently for Quad surfaces from surfaces with
+				# 3 sides
+				if not c_surface.IsQuad:
+					r1_inverted = r2_invered = False
+					if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
+						raw_edges[3].InvertPointLocations()
+						r1_inverted = True
+
+					if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint():
+						raw_edges[1].InvertPointLocations()
+						r2_invered = True
+
+					raw_edges[3].InvertPointLocations()
+
+					if r1_inverted and r2_invered:
+						raw_edges[1].InvertPointLocations()
+						raw_edges[3].InvertPointLocations()
+				else:
+					if raw_edges[1].GetEndPoint() != raw_edges[0].GetStartPoint(): raw_edges[1].InvertPointLocations()
+					if raw_edges[2].GetEndPoint() != raw_edges[1].GetStartPoint(): raw_edges[2].InvertPointLocations()
+					if raw_edges[3].GetEndPoint() != raw_edges[2].GetStartPoint(): raw_edges[3].InvertPointLocations()
+					if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint(): raw_edges[3].InvertPointLocations()
+					if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint(): raw_edges[1].InvertPointLocations()
+					raw_edges[3].InvertPointLocations()
+
+				if not c_surface.IsQuad:
+					raw_edges[3].IsFalseEdge = True
+
+				# Add up all the surfaces edge location as well as
+				# the point locations. If the surface is not a Quad,
+				# then skip the edge position and the point positions
+				for edge in raw_edges:
+					if not edge.IsFalseEdge:
+						point_total_location_x += edge.GetEndPoint()[0]
+						point_total_location_y += edge.GetEndPoint()[1]
+						point_total_location_z += edge.GetEndPoint()[2]
+
+						point_total_location_x += edge.GetStartPoint()[0]
+						point_total_location_y += edge.GetStartPoint()[1]
+						point_total_location_z += edge.GetStartPoint()[2]
+
+						edge_total_location_x += edge.GetMidPoint()[0]
+						edge_total_location_y += edge.GetMidPoint()[1]
+						edge_total_location_z += edge.GetMidPoint()[2]
+
+
+				# Then do some mathematical magic...
+				# Note that this formula is different for Quads.
+				# because the number of points that needs to split apart
+				# are differnet 
+				if c_surface.IsQuad:
+					center_edge_mid_point[0] = 2 * (edge_total_location_x / 4) - (point_total_location_x / 8)
+					center_edge_mid_point[1] = 2 * (edge_total_location_y / 4) - (point_total_location_y / 8)
+					center_edge_mid_point[2] = 2 * (edge_total_location_z / 4) - (point_total_location_z / 8)
+				else:
+					center_edge_mid_point[0] = 2 * (edge_total_location_x / 3) - (point_total_location_x / 6)
+					center_edge_mid_point[1] = 2 * (edge_total_location_y / 3) - (point_total_location_y / 6)
+					center_edge_mid_point[2] = 2 * (edge_total_location_z / 3) - (point_total_location_z / 6)
+
+
+				# And now we can finally create a new BuildSurfaceEdge object and feed it the points
+				center_edge = BuildSurfaceEdge("NULL")
+				center_edge.SetStartPoint(raw_edges[0].GetMidPoint())
+				center_edge.SetEndPoint(raw_edges[2].GetMidPoint())
+				center_edge.SetMidPoint(center_edge_mid_point)
+
+				# if the surface is not a quad, then check if the edge_a and edge_b's start and end points
+				# align. if they do not align, use the Start point of the center edge. Otherwise use the end
+				# point. This will result with all the points converging to a single point...
+				if not c_surface.IsQuad:
+					if raw_edges[1].GetStartPoint() != raw_edges[0].GetEndPoint():
+						center_edge.SetStartPoint(raw_edges[0].GetStartPoint())
+					else:
+						center_edge.SetStartPoint(raw_edges[0].GetEndPoint())
+					
+
+				# As for the other two edges we already have the data for those two...
+				# So we can feed it to the surface object...
+				c_surface.edge_a = raw_edges[1]
+				c_surface.edge_b = center_edge
+				c_surface.edge_c = raw_edges[3]
+				c_surface.RawEdgeList = raw_edges
+
+				# define the color data for the surface blocks...
+				c_surface.thickness = float(surface.find("Data/Single[@key='bmt-thickness']").text)
+				c_surface.saturation = float(surface.find("Data/Single[@key='bmt-sat']").text)
+				c_surface.luminosity = float(surface.find("Data/Single[@key='bmt-lum']").text)
+				c_surface.col_rgb = [
+					float(surface.find("Data/Color/R").text),
+					float(surface.find("Data/Color/G").text),
+					float(surface.find("Data/Color/B").text)
+				]
+				c_surface.UsePaint = surface.find("Data/Boolean[@key='bmt-painted']").text == "True"
+				c_surface.MaterialType = int(surface.find("Data/Integer[@key='bmt-surfMat']").text)
+
+				# define the skin data
+				try:
+					c_surface.skin_id = surface.find('Settings/Skin').get('id')
+					c_surface.skin_name = surface.find('Settings/Skin').get('name')
+				except:			
+					c_surface.skin_id = 'Template'
+					c_surface.skin_name = 'Template'
+				if (c_surface.skin_name == 'default'):
+					c_surface.skin_id = 'Template'
+					c_surface.skin_name = 'Template'
+
+				# Add it to the list and increment the number of blocks imported
+				returnList.append(c_surface)
+				total_blocks += 1
+
+
+			# 	try:
+			# 		skin_name = surface.find("Settings/Skin").get("name")
+			# 		skin_id = surface.find("Settings/Skin").get("id")
+			# 	except:
+			# 		skin_name = "Template"
+			# 		skin_id = "Template"
+			# 	c_surface.skin = skin_name
+			# 	c_surface.skin_id = skin_id
+			# 	returnList.append(c_surface)
+			except:
+				skipped_blocks += 1
 		
 		print("{} blocks imported...\n{} components imported...\n{} blocks skipped".format(total_blocks, total_components, skipped_blocks))
 		return {

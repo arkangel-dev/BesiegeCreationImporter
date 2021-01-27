@@ -221,6 +221,7 @@ class BuildSurfaceEdge():
 
 class BuildSurface():
 	block_id = "73"
+	code_name = "BuildSurface"
 	edge_a = BuildSurfaceEdge("")
 	edge_b = BuildSurfaceEdge("")
 	edge_c = BuildSurfaceEdge("")
@@ -235,7 +236,8 @@ class BuildSurface():
 	skin_id = 0
 
 	# color data
-	UsePaint = False
+	MaterialType = 0
+	Glass = False
 	col_rgb = [0,0,0]
 	saturation = 0.0
 	luminosity = 0.0

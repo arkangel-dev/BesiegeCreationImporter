@@ -111,7 +111,7 @@ class LineTypeObjectSettings(bpy.types.Panel):
 
 class BuildSurfaceSettings(bpy.types.Panel):
 	bl_label = 'Surface Blocks'
-	bl_idname = 'PT_SkinSettingsPanel'
+	bl_idname = 'PT_SurfaceSettingsPanel'
 	bl_space_type = 'VIEW_3D'
 	bl_region_type = 'UI'
 	bl_category = 'Besiege'
