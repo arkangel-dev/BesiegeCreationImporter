@@ -12,6 +12,7 @@ BesiegeCreationImportAddon
 *.blend1
 dev-log.md
 adddon.py
+hidden/
 
 # Distribution / packaging
 .Python
@@ -131,3 +132,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 .vscode/settings.json
+CustomBlocks/uvrefmap_checkeredmap.jpg

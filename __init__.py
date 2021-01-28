@@ -1,7 +1,7 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 6, 3),
+	'version': (1, 7, 0),
 	'blender': (2, 90, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
@@ -25,6 +25,7 @@ import os
 import traceback
 import configparser
 import time
+import aud
 from pathlib import Path
 
 
@@ -72,6 +73,7 @@ class GeneralSettings(bpy.types.Panel):
 		layout = self.layout
 		layout.row().prop(context.scene, 'bsgimp_create_parent')
 		layout.row().prop(context.scene, 'bsgimp_merge_decor_components')
+		layout.row().prop(context.scene, 'bsgimp_notify_on_complete')
 		layout.row().operator('obj.selectimported', text = 'Select Imported')
 
 class SettingsPanel(bpy.types.Panel):
@@ -108,6 +110,21 @@ class LineTypeObjectSettings(bpy.types.Panel):
 		cleanup_row = layout.row()
 		cleanup_row.prop(context.scene, 'bsgimp_line_type_cleanup_options')
 		cleanup_row.enabled = context.scene.bsgimp_line_type_join_components
+
+class BuildSurfaceSettings(bpy.types.Panel):
+	bl_label = 'Surface Blocks'
+	bl_idname = 'PT_SurfaceSettingsPanel'
+	bl_space_type = 'VIEW_3D'
+	bl_region_type = 'UI'
+	bl_category = 'Besiege'
+	bl_parent_id = 'PT_MainPanel'
+	bl_options = {'DEFAULT_CLOSED'}
+
+	def draw(self, context):
+		layout = self.layout
+		layout.row().prop(context.scene, 'bsgimp_surface_type_resolution')
+		layout.row().prop(context.scene, 'bsgimp_surface_type_thickness_multiplier')
+		layout.row().prop(context.scene, 'bsgimp_surface_type_skip_surfaces')
 
 
 class SkinSettings(bpy.types.Panel):
@@ -153,6 +170,7 @@ class ImportOperator(bpy.types.Operator):
 
 	def execute(self, context):
 		try:
+
 			st_t = time.time()
 			return_data = GlobalData.importer.ImportCreation(
 				vanilla_skins=context.scene.bsgimp_use_vanilla_blocks,
@@ -164,10 +182,19 @@ class ImportOperator(bpy.types.Operator):
 				node_grouping_mode=context.scene.bsgimp_make_unique_node_groups,
 				use_node_groups=context.scene.bsgimp_use_node_group,
 				node_group_setup=context.scene.bsgimp_node_set,
-				merge_decor_blocks=context.scene.bsgimp_merge_decor_components
-				
+				merge_decor_blocks=context.scene.bsgimp_merge_decor_components,
+				surface_block_resolution=context.scene.bsgimp_surface_type_resolution,
+				surface_block_thickness_mult=context.scene.bsgimp_surface_type_thickness_multiplier,
+				skip_surfaces=context.scene.bsgimp_surface_type_skip_surfaces
 			)
+
+
 			et_t = time.time()
+			if (et_t - st_t) > 5 and context.scene.bsgimp_notify_on_complete:
+				device = aud.Device()
+				path_to_sound = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'import-complete.mp3') if not dev_mode else 'import-complete.mp3'
+				sound = aud.Sound(path_to_sound)
+				device.play(sound)
 			for material in return_data['imported_materials']:
 				newmat = bpy.context.scene.bsgimp_purgeable_materials.add()
 				newmat.obj_pointer = material
@@ -277,6 +304,7 @@ def register():
 	bpy.utils.register_class(GeneralSettings)
 	bpy.utils.register_class(SkinSettings)
 	bpy.utils.register_class(LineTypeObjectSettings)
+	bpy.utils.register_class(BuildSurfaceSettings)
 	bpy.utils.register_class(SettingsPanel)
 	bpy.utils.register_class(SaveGlobalConfiguration)
 	bpy.utils.register_class(ImportOperator)
@@ -284,6 +312,7 @@ def register():
 	bpy.utils.register_class(PurgeableMaterialList)
 	bpy.utils.register_class(SelectableImportedObjectList)
 	bpy.utils.register_class(SelectImportedObjects)
+
 	
 	# register properties
 	# paths
@@ -295,6 +324,7 @@ def register():
 	# properties
 	bpy.types.Scene.bsgimp_create_parent = bpy.props.BoolProperty(name = 'Create parent', default=False, description = 'Create a boundbox around creation and parent all blocks to it')
 	bpy.types.Scene.bsgimp_merge_decor_components = bpy.props.BoolProperty(name = 'Merge decor components', default=True, description='If checked, decor components such as the levers on the logic gate blocks, will be merged with the base object')
+	bpy.types.Scene.bsgimp_notify_on_complete = bpy.props.BoolProperty(name = 'Notify on completion', default=False, description='Will play a notification sound once the import is complete for machines that took more than 5 seconds to import.')
 
 	# materials
 	bpy.types.Scene.bsgimp_use_vanilla_blocks = bpy.props.BoolProperty(name = 'Use vanilla blocks', default=False, description = 'Ignore BSG file skin data and use vanilla blocks')
@@ -329,9 +359,12 @@ def register():
 		)
 	)
 
+	bpy.types.Scene.bsgimp_surface_type_resolution = bpy.props.FloatProperty(name = 'Resolution', default=0.1, description='Resolution of the surface block. Lower values will generate meshes with higher resolution. Its recommeneded that you leave this at 0.1')
+	bpy.types.Scene.bsgimp_surface_type_thickness_multiplier = bpy.props.FloatProperty(name = 'Thickeness Multiplier', default=1, description='This value will be multiplied with the thickness value read from BSG file before being applied to the solidifier modifier')
+	bpy.types.Scene.bsgimp_surface_type_skip_surfaces = bpy.props.BoolProperty(name = 'Skip Surfaces', default=False, description='If checked the addon will skip surface blocks')
+
 	bpy.types.Scene.bsgimp_purgeable_materials = bpy.props.CollectionProperty(type=PurgeableMaterialList)
 	bpy.types.Scene.bsgimp_selectable_imports = bpy.props.CollectionProperty(type=SelectableImportedObjectList)
-
 	bpy.app.handlers.load_post.append(ReadGlobalConfig)
 
 def unregister():
@@ -364,9 +397,13 @@ def unregister():
 	del bpy.types.Scene.bsgimp_line_type_cleanup_options
 	del bpy.types.Scene.bsgimp_selectable_imports
 	del bpy.types.Scene.bsgimp_merge_decor_components
+	del bpy.types.Scene.bsgimp_surface_type_resolution
+	del bpy.types.Scene.bsgimp_surface_type_thickness_multiplier
+	del bpy.types.Scene.bsgimp_surface_type_skip_surfaces
 	
 
 #This is required in order for the script to run in the text editor   
 if __name__ == '__main__':
 	register()
-	
+	import importlib
+	importlib.reload(blenapi)	

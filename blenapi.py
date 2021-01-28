@@ -6,6 +6,7 @@ import json
 import time
 import xml.etree.ElementTree as ET
 import random
+import bmesh
 from mathutils import Euler, Quaternion, Vector, Matrix
 from math import radians, pi, sqrt
 from pathlib import Path
@@ -15,13 +16,14 @@ dev_mode = True
 if dev_mode:
 	import Component
 	from Bezier import Bezier
-	from Block import Block, Surface, Surface_Edge
+	from Block import Block, BuildSurface, BuildSurfaceEdge
 	from MaterialCatalog import MaterialList, NodeGroups
 	from bsgreader import Reader
 else:
 	from .bsgreader import Reader
+	from .Bezier import Bezier
 	from .Component import Component
-	from .Block import Block, Surface, Surface_Edge
+	from .Block import Block, BuildSurface, BuildSurfaceEdge
 	from .MaterialCatalog import MaterialList, NodeGroups
 
 class BlenderAPI():
@@ -47,7 +49,10 @@ class BlenderAPI():
 	setting_hide_parent_empties = False
 	setting_use_node_groups = False
 	setting_merge_decor_blocks = True
+	setting_skip_surface_blocks = False
 	setting_brace_threshhold = 0.5
+	setting_surface_resolution = 0.1
+	setting_surface_thickness_multiplier = 0.0
 	setting_clean_up_action = 'DO_NOTHING'
 	setting_grouping_mode = 'SAME_CONFIG'
 	setting_node_setup = 'PRINCIPLED_BDSF'
@@ -61,7 +66,23 @@ class BlenderAPI():
 		self.custom_block_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'CustomBlocks')
 		if dev_mode: self.custom_block_dir = "D:\\GitHub\\besiege-creation-importer\\modules\\CustomBlocks"
 
-	def ImportCreation(self, vanilla_skins=False, create_parent=False, generate_material=True, merge_decor_blocks=False, use_node_groups=False, node_grouping_mode='SAME_CONFIG', node_group_setup='PRINCIPLED_BDSF', line_type_cleanup='DO_NOTHING', join_line_components=False, hide_parent_empties=True, bracethreshold=0.5) -> None:
+	def ImportCreation(
+			self,
+			vanilla_skins=False,
+			create_parent=False,
+			generate_material=True, 
+			merge_decor_blocks=False,
+			use_node_groups=False,
+			join_line_components=False,
+			hide_parent_empties=True,
+			skip_surfaces=False,
+			node_grouping_mode='SAME_CONFIG',
+			node_group_setup='PRINCIPLED_BDSF',
+			line_type_cleanup='DO_NOTHING',
+			bracethreshold=0.5,
+			surface_block_resolution=0.1,
+			surface_block_thickness_mult=0.0
+		) -> None:
 		'''
 		Import a Besiege Creation File (bsg file).
 		Parameters
@@ -82,6 +103,9 @@ class BlenderAPI():
 		self.setting_grouping_mode = node_grouping_mode
 		self.setting_node_setup = node_group_setup
 		self.setting_merge_decor_blocks = merge_decor_blocks
+		self.setting_surface_resolution = surface_block_resolution
+		self.setting_surface_thickness_multiplier = surface_block_thickness_mult
+		self.setting_skip_surface_blocks = skip_surfaces
 
 		# First we'll reset the object history because if we imported a model before this cycle,
 		# the import model methods will try to duplicate objects that does not exist
@@ -118,8 +142,6 @@ class BlenderAPI():
 		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
 		for block in normal_draw:
 			imported_list.extend(self.ProcessDefaultTypeBlock(block))
-			# for component in block.components:
-				# imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		# This is for drawing "line type blocks". These blocks are a bit more complicated. These blocks
 		# have a position and rotation for start and end blocks. These blocks are positioned and rotated.
@@ -131,8 +153,9 @@ class BlenderAPI():
 		# There is also the "surface type block". But we dont speak of that... (╬▔皿▔)╯	
 		# Scratch that... ProNou has finished the surface blocks so I have an idea how I can finish up
 		# surface blocks. Its going to be fucking nightmare (ノ｀Д)ノ
-		for block in surface_draw:
-			self.BlockDrawTypeSurfaceType(block, vanilla_skins)
+		if not self.setting_skip_surface_blocks:
+			for block in surface_draw:
+				imported_list.append(self.BlockDrawTypeSurfaceType(block, vanilla_skins))
 		
 		# Then we get rid of the temp objects because we no longer need them :)
 		for block in self.temp_obj_list:
@@ -270,78 +293,155 @@ class BlenderAPI():
 			return clone
 
 
-	def BlockDrawTypeSurfaceType(self, surface:Surface, vanilla_skins=False) -> 'Object':
-		print("Interpolating surface with {} edges...".format(len(surface.edges)))
-		mesh = bpy.data.meshes.new("Surface " + surface.guid)
-		obj_m = bpy.data.objects.new(mesh.name, mesh)
-		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(obj_m)
+	def BlockDrawTypeSurfaceType(self, surface:BuildSurface, vanilla_skins=False) -> 'Object':
+		'''
+		This function will generate a surface based off the data from a BuildSurface object.
+		Parameters:
+			surface : BuildSurface : Suface object containing the data
+			vanilla_skins : boolean : Should the surface be imported with vanilla skins?
+		'''
+		print("Interpolating surface {}...".format(surface.guid))
 
-		curve_point_list = []
-		end_point_list = []
-		point_count = 0
-		for edge in surface.U_Lines:
+		# Create mesh and give it an object instance...
+		mesh = bpy.data.meshes.new("BuildSurface_" + surface.guid)
+		mesh_object = bpy.data.objects.new(mesh.name, mesh)
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(mesh_object)
 
+		# We will store the points we will actually plot in this list
+		mesh_vertex_list = []
+		
+		# Generate a list start, end and mid points...
+		curve_start_points = self.GenerateCurve(surface.edge_a)
+		curve_mid_points = self.GenerateCurve(surface.edge_b)
+		curve_end_points = self.GenerateCurve(surface.edge_c)
 
-			midpoint = self.GetMidpoint(edge.GetStartLocation(), edge.GetEndLocation())
-			new_point = [
-				midpoint[0] + (edge.GetLocation()[0] - midpoint[0]) * 2,
-				midpoint[1] + (edge.GetLocation()[1] - midpoint[1]) * 2,
-				midpoint[2] + (edge.GetLocation()[2] - midpoint[2]) * 2
-			]
-			
-			curve_set = self.GenerateCurve([edge.GetStartLocation(), new_point, edge.GetEndLocation()])
-			end_point_list.append(curve_set)
-			# curve_point_list.extend(curve_set)
-
-			self.MakeReferencePoint("Edge_Start_"+edge.guid, edge.GetStartLocation())
-			self.MakeReferencePoint("Edge_Mid_"+edge.guid, edge.GetLocation(), empty_type="SPHERE")
-			self.MakeReferencePoint("Edge_End_"+edge.guid, edge.GetEndLocation())
-
-
-		mid_carve_data = surface.GetMidCurveU()
-
-		self.MakeReferencePoint("MIDPOINT_CENTER", mid_carve_data[1], empty_type="SPHERE")
-		self.MakeReferencePoint("MIDPOINT_START", mid_carve_data[0])
-		self.MakeReferencePoint("MIDPOINT_END", mid_carve_data[2])
-
-		midpoint = self.GetMidpoint(mid_carve_data[0], mid_carve_data[2])
-		new_point = [
-			midpoint[0] + (mid_carve_data[1][0] - midpoint[0]) * 2,
-			midpoint[1] + (mid_carve_data[1][1] - midpoint[1]) * 2,
-			midpoint[2] + (mid_carve_data[1][2] - midpoint[2]) * 2
-		]
-		curve_set = self.GenerateCurve([mid_carve_data[0], new_point, mid_carve_data[2]])
-		point_count = len(curve_set)
-		# curve_point_list.extend(curve_set)
-		end_point_list.append(curve_set)
-
-
-		end_point_list[0] = list(reversed(end_point_list[0]))
-		for i in range(0, len(end_point_list[0])):
-			midpoint = self.GetMidpoint(end_point_list[0][i], end_point_list[1][i])
-			new_point = [
-				midpoint[0] + (end_point_list[2][i][0] - midpoint[0]) * 2,
-				midpoint[1] + (end_point_list[2][i][1] - midpoint[1]) * 2,
-				midpoint[2] + (end_point_list[2][i][2] - midpoint[2]) * 2
-			]
-			curve_set = self.GenerateCurve([end_point_list[1][i], new_point, end_point_list[0][i]])
-			curve_point_list.extend(curve_set)
-
-		face_list = self.GenerateFaceList(point_count)
-		mesh.from_pydata(curve_point_list, [],  face_list)
+		# mesh_vertex_list.extend(curve_start_points)
+		# mesh_vertex_list.extend(curve_mid_points)
+		# mesh_vertex_list.extend(curve_end_points)
+		
+		# self.MakeReferencePoint("Edge_A_Start_" + surface.guid, surface.edge_a.GetStartPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_A_Mid_" + surface.guid, surface.edge_a.GetMidPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_A_End_" + surface.guid, surface.edge_a.GetEndPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_B_Start_" + surface.guid, surface.edge_b.GetStartPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_B_End_" + surface.guid, surface.edge_b.GetEndPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_C_Start_" + surface.guid, surface.edge_c.GetStartPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_C_Mid_" + surface.guid, surface.edge_c.GetMidPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_C_End_" + surface.guid, surface.edge_c.GetEndPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("CenterPoint_" + surface.guid, surface.edge_b.GetMidPoint(), empty_type="SPHERE")
+		# for edge in surface.RawEdgeList:
+		# 	self.MakeReferencePoint("StartPoint_" + edge.guid, edge.GetStartPoint())
+		# 	self.MakeReferencePoint("MidPoint_" + edge.guid, edge.GetMidPoint())
+		# 	self.MakeReferencePoint("EndPoint_" + edge.guid, edge.GetEndPoint())
 
 		
-		obj_m.modifiers.new("Solidify", 'SOLIDIFY')
-		obj_m.modifiers.new("Edge Split", 'EDGE_SPLIT')
-		obj_m.modifiers["Solidify"].thickness = 0.05
-		obj_m.modifiers["Solidify"].offset = 0.0
+		# Calculate the points based off the data from the curves generated previously
+		# The function will plot a curve with the start taken from curve_start_points,
+		# control point taken from curve_mid_points and the end point taken from curve_end_points.
+		# Each one will generated step by step
+		for i in range(0, len(curve_start_points)):
+			midpoint = self.GetMidpoint(curve_start_points[i], curve_end_points[i])
+			newpoint = [
+				midpoint[0] + (curve_mid_points[i][0] - midpoint[0]) * 2,
+				midpoint[1] + (curve_mid_points[i][1] - midpoint[1]) * 2,
+				midpoint[2] + (curve_mid_points[i][2] - midpoint[2]) * 2
+			]
+			mesh_vertex_list.extend(self.CalculateCurvePoints([
+				curve_start_points[i],
+				newpoint,
+				curve_end_points[i]
+			], self.setting_surface_resolution))
+
+		# Generate list of 4x4 points so that they can be used as a way to 
+		# map the faces of the mesh
+		face_list = self.GenerateFaceList(len(curve_mid_points))
+
+		# Generate the actual mesh based off the data...
+		mesh.from_pydata(mesh_vertex_list, [], face_list)
+
+		# Generate UV map...
+		mesh.uv_layers.new(name="base")
+		bm = bmesh.new()
+		bm.from_mesh(mesh)
+		bm.faces.ensure_lookup_table()
+		uv_layer = bm.loops.layers.uv[0]
+		x_l = len(curve_mid_points) - 1
+
+		count = 0
+		current_x = 0
+		total_len = int(math.pow(x_l, 2))
+		scale_down = 1/(len(curve_mid_points) - 1)
+
+		for current_face in reversed(range(total_len)):
+			bm.faces[current_face].loops[2][uv_layer].uv = (
+				(0 + count) * scale_down,
+				(0 + current_x) * scale_down
+			)
+			bm.faces[current_face].loops[1][uv_layer].uv = (
+				(1 + count) * scale_down,
+				(0 + current_x) * scale_down
+			)
+			bm.faces[current_face].loops[0][uv_layer].uv = (
+				(1 + count) * scale_down,
+				(1 + current_x) * scale_down
+			)
+			bm.faces[current_face].loops[3][uv_layer].uv = (
+				(0 + count) * scale_down,
+				(1 + current_x) * scale_down
+			)
+			count += 1
+			if count >= x_l:
+				count = 0
+				current_x += 1
+		bm.to_mesh(mesh)
+
+
+
+		# Create the Solidify and Edge Split modifiers. and smooth out the surface
+		mesh_object.modifiers.new("Solidify", 'SOLIDIFY')
+		mesh_object.modifiers.new("Edge Split", 'EDGE_SPLIT')
+		mesh_object.modifiers["Solidify"].thickness = surface.thickness * self.setting_surface_thickness_multiplier
+		mesh_object.modifiers["Solidify"].offset = 0.0
+
+		if self.setting_GenerateMaterial:
+			mat = self.GenerateSurfaceBlockMaterial(surface)
+			mesh_object.active_material = mat
+		
 		for f in mesh.polygons:
 			f.use_smooth = True
+		return mesh_object
 
 
+
+	def GenerateCurve(self, edge:BuildSurfaceEdge) -> list:
+		'''
+		Generates a curve. Not to be confused with GenerateCurvePoint. This function
+		will calculate the position of the center control point and generate a curve.
+		Parameters:
+			edge : BuildSurfaceEdge : The edge
+		Return : list : list of points
+		Exceptions : None
+		'''
+		midpoint = self.GetMidpoint(edge.GetStartPoint(), edge.GetEndPoint())
+		newpoint = [
+			midpoint[0] + (edge.GetMidPoint()[0] - midpoint[0]) * 2,
+			midpoint[1] + (edge.GetMidPoint()[1] - midpoint[1]) * 2,
+			midpoint[2] + (edge.GetMidPoint()[2] - midpoint[2]) * 2
+		]
+		return self.CalculateCurvePoints([
+			edge.GetStartPoint(),
+			newpoint,
+			edge.GetEndPoint()
+		], self.setting_surface_resolution)
 
 			
-	def GenerateFaceList(self, chunk_size):
+	def GenerateFaceList(self, chunk_size) -> list:
+		'''
+		Generates a list of points that can be used as faces.
+		Parameters:
+			chunk_size : int : size of the mesh in one axis
+		Returns : list : list of points
+		Exceptions : None
+		'''
 		point_array = range(0, chunk_size * chunk_size)
 		chunk_arr = [point_array[i:i + chunk_size] for i in range(0, len(point_array), chunk_size)]
 		return_list = []
@@ -354,7 +454,15 @@ class BlenderAPI():
 				return_list.append([p1, p2, p3, p4])
 		return return_list
 
-	def GenerateCurve(self, points, resolution=0.1) -> list:
+	def CalculateCurvePoints(self, points, resolution=0.1) -> list:
+		'''
+		Calculates points of a curves and returns them.
+		Parameters:
+			points : list : list of co-ordinates used as the controls points
+			resolution : float : number of steps in the 3D curve
+		Returns : list : list of co-ordinates
+		Exceptions : None
+		'''
 		t_points = np.arange(0, 1, resolution)
 		curve_set = Bezier.Curve(t_points, np.array(points))
 		return_l = curve_set.tolist()
@@ -362,15 +470,33 @@ class BlenderAPI():
 		return return_l
 
 		
-	def MakeReferencePoint(self, name, location, size=0.25, empty_type="PLAIN_AXES") -> None:
-		pass
-		# empty = bpy.data.objects.new(name, None)
-		# empty.empty_display_size = size
-		# empty.empty_display_type = empty_type
-		# empty.location = location
-		# bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(empty)
+	def MakeReferencePoint(self, name:str, location:list, size=0.25, empty_type="PLAIN_AXES") -> None:
+		'''
+		This function creates an empty. The empty can be useful for marking a point in 3D space.
+		Parameters:
+			name : string : name of empty
+			location : list : co-ordinates for point
+			size : float : size of empty
+			empty_type : string : Type of empty. Check Blender API docs for a list of types
+		Returns : None
+		Exceptions : None
+		'''
+		empty = bpy.data.objects.new(name, None)
+		empty.empty_display_size = size
+		empty.empty_display_type = empty_type
+		empty.location = location
+		bpy.data.collections[bpy.context.view_layer.active_layer_collection.name].objects.link(empty)
 
 	def GetMidpoint(self, start:list, end:list) -> list:
+		'''
+		This function gets the mid point between 2 points in 3D space. Will return a point in the form of
+		a list of length 3.
+		Parameters:
+			start : list : list of co-ordiantes for the start point
+			end : list : list of co-ordinates for the end point
+		Returns : None
+		Exceptions : None
+		'''
 		locx = (end[0] + start[0]) / 2
 		locy = (end[1] + start[1]) / 2
 		locz = (end[2] + start[2]) / 2
@@ -663,9 +789,25 @@ class BlenderAPI():
 			return False
 		return False
 
-	def CheckIfMaterialExists(block, skin_name):
-		mat_name = block.base_source + skin_name + "Material"
-		return str(mat_name) in bpy.data.materials.keys()
+	# def CheckIfMaterialExists(block, skin_name):
+	# 	mat_name = block.base_source + skin_name + "Material"
+	# 	return str(mat_name) in bpy.data.materials.keys()
+
+	def GenerateSurfaceBlockMaterial(self, surface:BuildSurface):
+		mat_name = "SurfaceBlock-{}".format(surface.skin_name)
+
+		if self.setting_grouping_mode.__eq__('SAME_CONFIG'): node_group_name = 'Surface-GlobalConfigNodeSetup'
+		elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'): node_group_name = 'Surface-{}SkinNodeSetup'.format(surface.skin_name)
+		else: node_group_name = 'SurfaceBlockNodeGoup'
+		node_group = None
+		try: node_group = bpy.data.node_groups[node_group_name]
+		except KeyError: node_group = NodeGroups().SurfaceBlockPrincipledBDSF(name=node_group_name, custom_block_dir=self.custom_block_dir)
+		texture_path = self.FetchSkinFile("BuildSurface", surface.skin_id, surface.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile("BuildSurface", "0", "Template", only_texture=True)
+		final_m = MaterialList.NodeGroupSurfaceMaterial(texture_path, mat_name, node_group, surface)
+		self.imported_materials.append(final_m)
+		return final_m
+		
+
 
 	def GenerateMaterial(self, block:Block, component:Component, skin_name:str) -> 'Material':
 		'''
@@ -680,36 +822,25 @@ class BlenderAPI():
 		# Ok time to generate the material. So first We generate the material and then we return it... Its that simple
 		# TODO : Add NodeGroup setup
 
-
-
 		mat_name = component.base_source + skin_name + "Material"
 		search_name = mat_name + "NodeGrouped" if self.setting_use_node_groups else ""
 		if str(search_name) in bpy.data.materials.keys(): return bpy.data.materials[search_name]
-		# print("Cannot find material {}".format(mat_name))
 		texture_path = self.FetchSkinFile(block.code_name, component.skin_id, component.skin_name, only_texture=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile(block.code_name, "0", "Template", only_texture=True)
 
 		if self.setting_use_node_groups:
 			node_group_name = ''
-			if self.setting_grouping_mode.__eq__('SAME_CONFIG'):
-				node_group_name = 'GlobalConfigNodeSetup'
-			elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'):
-				node_group_name = '{}SkinNodeSetup'.format(skin_name)
-			elif self.setting_grouping_mode.__eq__('FOR_EACH_BLOCK'):
-				node_group_name = '{}BlockNodeSetup'.format(component.base_source)
+			if self.setting_grouping_mode.__eq__('SAME_CONFIG'): node_group_name = 'GlobalConfigNodeSetup'
+			elif self.setting_grouping_mode.__eq__('FOR_EACH_SKIN'): node_group_name = '{}SkinNodeSetup'.format(skin_name)
+			elif self.setting_grouping_mode.__eq__('FOR_EACH_BLOCK'): node_group_name = '{}BlockNodeSetup'.format(component.base_source)
 
 			node_group = None
 			
-			try:
-				node_group = bpy.data.node_groups[node_group_name] 
-			except KeyError:
-				node_group = NodeGroups().SimplePrincipledBDSF(name=node_group_name)
-			final_m = MaterialList().NodeGroupMaterial(component, texture_path, mat_name, node_group)
+			try: node_group = bpy.data.node_groups[node_group_name] 
+			except KeyError: node_group = NodeGroups().SimplePrincipledBDSF(name=node_group_name)
+			final_m = MaterialList.NodeGroupMaterial(texture_path, mat_name, node_group)
 			self.imported_materials.append(final_m)
 			return final_m
 		else:
-			final_m = MaterialList().DefaultMaterial(component, texture_path, mat_name)
+			final_m = MaterialList.DefaultMaterial(component, texture_path, mat_name)
 			self.imported_materials.append(final_m)
 			return final_m
-
-			# BraceSectionAAl-ShadowMaterial
-			# BraceSectionAAl-ShadowMaterialNodeGrouped
