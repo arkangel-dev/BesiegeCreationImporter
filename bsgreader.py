@@ -184,12 +184,12 @@ class Reader():
 
 		for surface in surface_data_surfaces:
 			try:
-				guid = surface.get('guid')
+				surface_guid = surface.get('guid')
 
 				# Split the string to get a list of the edge GUIDs
 				surface_edge_guids = surface.find("Data/String[@key='edges']").text.split("|")
 
-				c_surface = BuildSurface(guid)
+				c_surface = BuildSurface(surface_guid)
 				if len(surface_edge_guids) == 3:
 					# If we dont have enough edges, we can take a GUID
 					# from the list and add it to the end of the list
@@ -269,20 +269,19 @@ class Reader():
 				# The curtain effect works differently for Quad surfaces from surfaces with
 				# 3 sides
 				if not c_surface.IsQuad:
-					r1_inverted = r2_invered = False
 					if raw_edges[0].GetStartPoint() != raw_edges[3].GetEndPoint() and raw_edges[2].GetEndPoint() != raw_edges[3].GetStartPoint():
 						raw_edges[3].InvertPointLocations()
-						r1_inverted = True
 
 					if raw_edges[0].GetEndPoint() != raw_edges[1].GetStartPoint() and raw_edges[1].GetEndPoint() != raw_edges[2].GetStartPoint():
 						raw_edges[1].InvertPointLocations()
-						r2_invered = True
 
 					raw_edges[3].InvertPointLocations()
-
-					if r1_inverted and r2_invered:
-						raw_edges[1].InvertPointLocations()
-						raw_edges[3].InvertPointLocations()
+					if raw_edges[1].GetStartPoint() != raw_edges[3].GetStartPoint():
+						if raw_edges[1].GetEndPoint() != raw_edges[0].GetEndPoint():
+							raw_edges[3].InvertPointLocations()
+						else:
+							raw_edges[1].InvertPointLocations()
+					
 				else:
 					if raw_edges[1].GetEndPoint() != raw_edges[0].GetStartPoint(): raw_edges[1].InvertPointLocations()
 					if raw_edges[2].GetEndPoint() != raw_edges[1].GetStartPoint(): raw_edges[2].InvertPointLocations()
@@ -332,10 +331,12 @@ class Reader():
 				center_edge.SetEndPoint(raw_edges[2].GetMidPoint())
 				center_edge.SetMidPoint(center_edge_mid_point)
 
+
 				# if the surface is not a quad, then check if the edge_a and edge_b's start and end points
 				# align. if they do not align, use the Start point of the center edge. Otherwise use the end
 				# point. This will result with all the points converging to a single point...
 				if not c_surface.IsQuad:
+					# if raw_edges[0].GetStartPoint() != center_edge.GetEndPoint(): center_edge.InvertPointLocations()
 					if raw_edges[1].GetStartPoint() != raw_edges[0].GetEndPoint():
 						center_edge.SetStartPoint(raw_edges[0].GetStartPoint())
 					else:

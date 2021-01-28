@@ -21,6 +21,7 @@ if dev_mode:
 	from bsgreader import Reader
 else:
 	from .bsgreader import Reader
+	from .Bezier import Bezier
 	from .Component import Component
 	from .Block import Block, BuildSurface, BuildSurfaceEdge
 	from .MaterialCatalog import MaterialList, NodeGroups
@@ -141,8 +142,6 @@ class BlenderAPI():
 		# offset, rotated and positioned correctly. Nothing else. These are rather simple to import
 		for block in normal_draw:
 			imported_list.extend(self.ProcessDefaultTypeBlock(block))
-			# for component in block.components:
-				# imported_list.append(self.BlockDrawTypeDefault(block, component, vanilla_skins))
 		
 		# This is for drawing "line type blocks". These blocks are a bit more complicated. These blocks
 		# have a position and rotation for start and end blocks. These blocks are positioned and rotated.
@@ -319,7 +318,16 @@ class BlenderAPI():
 		# mesh_vertex_list.extend(curve_start_points)
 		# mesh_vertex_list.extend(curve_mid_points)
 		# mesh_vertex_list.extend(curve_end_points)
-		# self.MakeReferencePoint("CenterPoint_" + surface.guid, surface.edge_b.GetMidPoint())
+		
+		# self.MakeReferencePoint("Edge_A_Start_" + surface.guid, surface.edge_a.GetStartPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_A_Mid_" + surface.guid, surface.edge_a.GetMidPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_A_End_" + surface.guid, surface.edge_a.GetEndPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_B_Start_" + surface.guid, surface.edge_b.GetStartPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_B_End_" + surface.guid, surface.edge_b.GetEndPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_C_Start_" + surface.guid, surface.edge_c.GetStartPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_C_Mid_" + surface.guid, surface.edge_c.GetMidPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("Edge_C_End_" + surface.guid, surface.edge_c.GetEndPoint(), empty_type="SPHERE")
+		# self.MakeReferencePoint("CenterPoint_" + surface.guid, surface.edge_b.GetMidPoint(), empty_type="SPHERE")
 		# for edge in surface.RawEdgeList:
 		# 	self.MakeReferencePoint("StartPoint_" + edge.guid, edge.GetStartPoint())
 		# 	self.MakeReferencePoint("MidPoint_" + edge.guid, edge.GetMidPoint())

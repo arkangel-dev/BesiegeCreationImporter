@@ -1,7 +1,7 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 6, 3),
+	'version': (1, 7, 0),
 	'blender': (2, 90, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
@@ -192,7 +192,8 @@ class ImportOperator(bpy.types.Operator):
 			et_t = time.time()
 			if (et_t - st_t) > 5 and context.scene.bsgimp_notify_on_complete:
 				device = aud.Device()
-				sound = aud.Sound("import-complete.mp3")
+				path_to_sound = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'import-complete.mp3') if not dev_mode else 'import-complete.mp3'
+				sound = aud.Sound(path_to_sound)
 				device.play(sound)
 			for material in return_data['imported_materials']:
 				newmat = bpy.context.scene.bsgimp_purgeable_materials.add()
