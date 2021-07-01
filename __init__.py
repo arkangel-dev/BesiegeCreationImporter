@@ -1,7 +1,7 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 7, 0),
+	'version': (1, 7, 1),
 	'blender': (2, 90, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
@@ -12,7 +12,7 @@ bl_info = {
 	'support' : 'COMMUNITY',
 }
 
-dev_mode = True
+dev_mode = False
 
 if dev_mode:
 	import blenapi
@@ -324,7 +324,7 @@ def register():
 	# properties
 	bpy.types.Scene.bsgimp_create_parent = bpy.props.BoolProperty(name = 'Create parent', default=False, description = 'Create a boundbox around creation and parent all blocks to it')
 	bpy.types.Scene.bsgimp_merge_decor_components = bpy.props.BoolProperty(name = 'Merge decor components', default=True, description='If checked, decor components such as the levers on the logic gate blocks, will be merged with the base object')
-	bpy.types.Scene.bsgimp_notify_on_complete = bpy.props.BoolProperty(name = 'Notify on completion', default=False, description='Will play a notification sound once the import is complete for machines that took more than 5 seconds to import.')
+	bpy.types.Scene.bsgimp_notify_on_complete = bpy.props.BoolProperty(name = 'Notify on completion', default=True, description='Will play a notification sound once the import is complete for machines that took more than 5 seconds to import.')
 
 	# materials
 	bpy.types.Scene.bsgimp_use_vanilla_blocks = bpy.props.BoolProperty(name = 'Use vanilla blocks', default=False, description = 'Ignore BSG file skin data and use vanilla blocks')
