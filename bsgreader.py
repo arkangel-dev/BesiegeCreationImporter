@@ -5,7 +5,7 @@ import bpy
 import copy
 
 
-dev_mode = True
+dev_mode = False
 
 if dev_mode:
 	from Component import Component
@@ -125,7 +125,7 @@ class Reader():
 			# steering blocks, steering hinges, wheels etc... But out of all these
 			# blocks only the propeller blocks have their transform data altered...
 			if (block_id in ['26', '55']):
-				for key in block.find("Data").getchildren():
+				for key in list(block.find("Data")):
 					if key.get('key').__eq__('flipped'):
 						current_block.flipped = key.text
 
@@ -133,7 +133,7 @@ class Reader():
 			# end position as well as rotation.
 			if (block_id in ['7','9','45']):
 				sp, ep, sr, er = ('0','0','0'), ('0','0','0'), ('0','0','0'), ('0','0','0')
-				for key in block.find("Data").getchildren():
+				for key in list(block.find("Data")):
 					if key.get('key').__eq__('start-position'): sp = [key.find('X').text, key.find('Y').text, key.find('Z').text]
 					if key.get('key').__eq__('end-position'): ep = [key.find('X').text, key.find('Y').text, key.find('Z').text]
 					if key.get('key').__eq__('start-rotation'): sr = [key.find('X').text, key.find('Y').text, key.find('Z').text]
