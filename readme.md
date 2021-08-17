@@ -1,4 +1,4 @@
-![](https://img.shields.io/badge/Code%20Quality-Okay-green) ![](https://img.shields.io/badge/Surface%20Blocks-Sorta%20Working-orange) 
+![](https://img.shields.io/badge/Latest%20Compatible%20Build-2.93-green) ![](https://img.shields.io/badge/Surface%20Blocks-Stable-green) 
 
 <img src="readme.assets/thumbnail_skin_update_git.png" alt="thumbnail_skin_update_git" style="zoom: 67%;" />
 
