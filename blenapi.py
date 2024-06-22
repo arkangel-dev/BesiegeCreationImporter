@@ -130,7 +130,7 @@ class BlenderAPI():
 		# Catagorize all the blocks. We separate them by their draw type.
 		# Some objects will have to "drawn" differently than others.
 		for block in self.block_list:
-			if block.block_id in ['7','9','45']:
+			if block.block_id in ['7','9','45','75']:
 				line_draw.append(block)
 			elif block.block_id in ['73']:
 				surface_draw.append(block)
@@ -169,11 +169,11 @@ class BlenderAPI():
 			'imported_objects' : imported_list
 		}
 	
-	def ProcessDefaultTypeBlock(self, block) -> list:
+	def ProcessDefaultTypeBlock(self, block:Block) -> list:
 		base_block = None
 		decor_blocks = []
 		return_list = []
-
+		print('Processing block {}'.format(block.code_name))
 		for component in block.components:
 			imobject = self.BlockDrawTypeDefault(block, component, self.setting_use_vanilla_skin)
 			if component.group == 'BASE':
@@ -218,6 +218,7 @@ class BlenderAPI():
 			print("Object not found : {}".format(component.base_source))
 			# ...if we cannot find the skin we need, we'll import it
 			model = self.FetchSkinFile(component.base_source, component.skin_id, component.skin_name, only_model=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile(component.base_source, "0", "Template", only_model=True)
+			
 			for obj in bpy.context.selected_objects: obj.select_set(False)
 
 			# API changed sometime ago...
@@ -707,6 +708,8 @@ class BlenderAPI():
 		# # This can be done by importing a block, and then instead of importing it again from
 		# # disk, the same block can be duplicated again. This will give a HUGE performance boost
 		current_obj = self.LookupObject(block, component, vanilla_skins)
+		print(">>>>>>>>")
+		print(current_obj)
 		# Set the scale according to the BSG file.
 		current_obj.scale = block.getScale()
 		# Set the rotation according to the BSG file.
@@ -720,6 +723,8 @@ class BlenderAPI():
 		# The name will have the block name and the block guid.
 		# Having the GUID will be helpful for debugging
 		current_obj.name = component.base_source + "_" + block.guid
+		if (block.code_name == "Unknown"):
+			current_obj.name = block.block_id + "_" + current_obj.name
 		return current_obj
 
 	def CreateParent(self, obj_list:list) -> None:
@@ -751,7 +756,7 @@ class BlenderAPI():
 		# TODO Add skin not found exception
 		# TODO Refactor `blenapi.FetchModel()`
 		
-		dlist = '?'
+		dlist = '?'		
 		if skin_name != 'Template':
 			try:
 				d = os.path.join(self.workshop_store, skin_id)
