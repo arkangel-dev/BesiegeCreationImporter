@@ -147,8 +147,8 @@ class NodeGroups():
 
 		# create group inputs
 		group_inputs = shader_group.nodes.new('NodeGroupInput')
-		shader_group.inputs.new('NodeSocketColor','Color')
-		shader_group.inputs.new('NodeSocketFloat','Alpha')
+		shader_group.interface.new_socket(socket_type='NodeSocketColor', name='Color')
+		shader_group.interface.new_socket(socket_type='NodeSocketFloat', name='Alpha')
 
 		# create group outputs
 		principled_bdsf_node = shader_group.nodes.new("ShaderNodeBsdfPrincipled")
@@ -166,9 +166,9 @@ class NodeGroups():
 		shader_group = bpy.data.node_groups.new(name,  'ShaderNodeTree')
 
 		group_inputs = shader_group.nodes.new('NodeGroupInput')
-		shader_group.inputs.new('NodeSocketColor', 'Color')
-		shader_group.inputs.new('NodeSocketFloat', 'Alpha')
-		shader_group.inputs.new('NodeSocketFloat', 'Glass')
+		shader_group.interface.new_socket(socket_type='NodeSocketColor', name='Color')
+		shader_group.interface.new_socket(socket_type='NodeSocketFloat', name='Alpha')
+		shader_group.interface.new_socket(socket_type='NodeSocketFloat', name='Glass')
 
 		principled_bdsf = shader_group.nodes.new('ShaderNodeBsdfPrincipled')
 		glass_node = shader_group.nodes.new('ShaderNodeBsdfGlass')

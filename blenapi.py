@@ -208,6 +208,7 @@ class BlenderAPI():
 		# if the block is not in the object list, create a new key
 		# and update it...
 		sid = str(hash(component.base_source + component.skin_name + block.flipped)) if not self.setting_use_vanilla_skin else str(hash(component.base_source + "Template" + block.flipped))
+		print(self.import_object_list)
 		if sid in self.import_object_list.keys():
 			new_obj = bpy.data.objects[self.import_object_list[sid]].copy()
 			new_obj.data = bpy.data.objects[self.import_object_list[sid]].data.copy()
@@ -218,7 +219,10 @@ class BlenderAPI():
 			# ...if we cannot find the skin we need, we'll import it
 			model = self.FetchSkinFile(component.base_source, component.skin_id, component.skin_name, only_model=True) if not self.setting_use_vanilla_skin else self.FetchSkinFile(component.base_source, "0", "Template", only_model=True)
 			for obj in bpy.context.selected_objects: obj.select_set(False)
-			bpy.ops.import_scene.obj(filepath=model)
+
+			# API changed sometime ago...
+			# bpy.ops.import_scene.obj(filepath=model)
+			bpy.ops.wm.obj_import(filepath=model)
 			if len(bpy.context.selectable_objects) > 1:
 				bpy.context.view_layer.objects.active = list(bpy.context.selected_objects)[0]
 				bpy.ops.object.join()
@@ -276,7 +280,8 @@ class BlenderAPI():
 		if not block_name in self.custom_import_object_list.keys():
 			print("Object not found : {}".format(block_name))
 			dir_path = self.SearchInDirectory(os.path.join(self.custom_block_dir, block_name), ".obj")
-			bpy.ops.import_scene.obj(filepath=dir_path)
+			# bpy.ops.import_scene.obj(filepath=dir_path)
+			bpy.ops.wm.obj_import(filepath=dir_path)
 			block = list(bpy.context.selected_objects)[0]
 			block.name = str(hash(block.name))
 			[bpy.data.materials.remove(m) for m in block.data.materials]
@@ -670,7 +675,8 @@ class BlenderAPI():
 	def ClearExtraMaterialSlots(self, obj):
 		obj.active_material_index = 0
 		for _ in range(len(obj.material_slots)):
-			bpy.ops.object.material_slot_remove({'object': obj})
+			with bpy.context.temp_override(object=obj):
+				bpy.ops.object.material_slot_remove()
 
 	def GetDistance(self, objs:list) -> float:
 		'''

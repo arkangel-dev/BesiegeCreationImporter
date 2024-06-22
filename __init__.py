@@ -380,6 +380,7 @@ def unregister():
 	bpy.utils.unregister_class(PurgeableMaterialList)
 	bpy.utils.unregister_class(SelectableImportedObjectList)
 	bpy.utils.unregister_class(SelectImportedObjects)
+	bpy.utils.unregister_class(BuildSurfaceSettings)
 
 	# unregister properties
 	del bpy.types.Scene.bsgimp_bsg_path
