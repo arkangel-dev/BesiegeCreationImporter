@@ -26,12 +26,16 @@ class Reader():
 
 	def __init__(self, src:str):
 		self.cfile = src
+		self.LoadAtlast()
+   
+	def LoadAtlast(self) -> None:
 		atlas_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'object_transform_data_converted_v2.json')
 		if dev_mode: atlas_dir = 'object_transform_data_converted_v2.json'
 		with open(atlas_dir) as json_file:
 			self.atlas = json.load(json_file)
 
 	def ReadBlockData(self) -> List[Block]:
+		self.LoadAtlast()
 		# try:
 		# First we open the BSG file and parse it.
 		# Then we can use a xpath statement to find all the block tags
@@ -81,10 +85,12 @@ class Reader():
 			# Check if the block is in the transform atlast...
 			# if its not, print and increment the skipped block count
 			# we can display it on the addon page...
-			if not block_id in self.atlas.keys():
-				skipped_blocks += 1
-				print("Warning: Cannot find block ID {} in transform data atlas...".format(block_id))
-				continue
+			# if not block_id in self.atlas.keys():
+			# 	skipped_blocks += 1
+			# 	print("Warning: Cannot find block ID {} in transform data atlas...".format(block_id))
+    
+
+			# 	continue
 
 			total_blocks += 1
 			
@@ -115,7 +121,6 @@ class Reader():
 			# Set the GUID and the other various data...
 			current_block.guid = block.get('guid')
 			current_block.block_id = block_id
-			current_block.code_name = self.atlas[block_id]['code_name']
 
 			# Set the global rotation of the block...
 			current_block.SetGlobalMachineRotation(global_rot_x, global_rot_y, global_rot_z, global_rot_w)
@@ -131,7 +136,8 @@ class Reader():
 
 			# These are for the "Line type blocks". These blocks have two sets of co-ordinates. The start and
 			# end position as well as rotation.
-			if (block_id in ['7','9','45']):
+			if (block_id in ['7','9','45','75']):
+				print("Special block (string) (id {}) detected... ".format(current_block.block_id))
 				sp, ep, sr, er = ('0','0','0'), ('0','0','0'), ('0','0','0'), ('0','0','0')
 				for key in list(block.find("Data")):
 					if key.get('key').__eq__('start-position'): sp = [key.find('X').text, key.find('Y').text, key.find('Z').text]
@@ -143,44 +149,57 @@ class Reader():
 			# Each block will have multiple components. The main mesh itself and other little details that do not come
 			# with the mesh. For example, stuff like the needle and switches. This segment will allow us to import that stuff
 			# as well
-			for component in self.atlas[block_id]['components']:
-				print("Adding component ID {}...".format(component['base_source']))
-				total_components += 1
-				o_p_x, o_p_y, o_p_z = component['offset']['position'].values()
-				o_r_x, o_r_y, o_r_z = component['offset']['rotation'].values()
+			if block_id in self.atlas.keys():
+				current_block.code_name = self.atlas[block_id]['code_name']
+				for component in self.atlas[block_id]['components']:
+					print("Adding component ID {}...".format(component['base_source']))
+					total_components += 1
+					o_p_x, o_p_y, o_p_z = component['offset']['position'].values()
+					o_r_x, o_r_y, o_r_z = component['offset']['rotation'].values()
 
-				o_s_x = component['offset']['scale']['x']
-				o_s_y = component['offset']['scale']['z']
-				o_s_z = component['offset']['scale']['y']
+					o_s_x = component['offset']['scale']['x']
+					o_s_y = component['offset']['scale']['z']
+					o_s_z = component['offset']['scale']['y']
 
-				current_comp_inst = Component(
-					[o_p_x, o_p_y, o_p_z],
-					[o_r_x, o_r_y, o_r_z],
-					[o_s_x, o_s_y, o_s_z]
+					current_comp_inst = Component(
+						[o_p_x, o_p_y, o_p_z],
+						[o_r_x, o_r_y, o_r_z],
+						[o_s_x, o_s_y, o_s_z]
+					)
+					try:
+						current_comp_inst.skin_id = block.find('Settings/Skin').get('id')
+						current_comp_inst.skin_name = block.find('Settings/Skin').get('name')
+					except:			
+						current_comp_inst.skin_id = 'Template'
+						current_comp_inst.skin_name = 'Template'
+					if (current_comp_inst.skin_name == 'default'):
+						current_comp_inst.skin_id = 'Template'
+						current_comp_inst.skin_name = 'Template'
+					current_comp_inst.base_source = component['base_source']
+					current_comp_inst.group = component['group']
+					current_comp_inst.line_type_block = component['line_type_blocks']
+					if current_comp_inst.line_type_block:
+						current_comp_inst.line_type_start = component['line_type_components']['start']
+						current_comp_inst.line_type_end = component['line_type_components']['end']
+						current_comp_inst.line_type_middle = component['line_type_components']['middle']
+					current_block.components.append(deepcopy(current_comp_inst))
+				
+			else:
+				print("Uknown block (id {}) detected... ".format(current_block.block_id))
+				unknown_inst = Component(
+						[0 ,0 ,0],
+						[0 ,0 ,0],
+						[1 ,1 ,1]
 				)
-				try:
-					current_comp_inst.skin_id = block.find('Settings/Skin').get('id')
-					current_comp_inst.skin_name = block.find('Settings/Skin').get('name')
-				except:			
-					current_comp_inst.skin_id = 'Template'
-					current_comp_inst.skin_name = 'Template'
-				if (current_comp_inst.skin_name == 'default'):
-					current_comp_inst.skin_id = 'Template'
-					current_comp_inst.skin_name = 'Template'
-				current_comp_inst.base_source = component['base_source']
-				current_comp_inst.group = component['group']
-				current_comp_inst.line_type_block = component['line_type_blocks']
-				if current_comp_inst.line_type_block:
-					current_comp_inst.line_type_start = component['line_type_components']['start']
-					current_comp_inst.line_type_end = component['line_type_components']['end']
-					current_comp_inst.line_type_middle = component['line_type_components']['middle']
-				current_block.components.append(deepcopy(current_comp_inst))
+				unknown_inst.base_source = "Unknown"
+				unknown_inst.group = "BASE"
+				current_block.components.append(unknown_inst)
+				current_block.code_name = 'Unknown'
 			returnList.append(current_block)
 		
 		# now that the normal blocks have been processed and all the surface data blocks have been loaded,
 		# we can easily process them as well...
 		# First define a storage for the edges and surfaces. We'll process the edges first
-
 
 		for surface in surface_data_surfaces:
 			try:
