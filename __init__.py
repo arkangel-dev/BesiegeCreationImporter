@@ -1,8 +1,8 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (1, 7, 1),
-	'blender': (2, 90, 1),
+	'version': (2, 0, 0),
+	'blender': (4, 11, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
 	'warning': 'This addon is still pretty experimental',

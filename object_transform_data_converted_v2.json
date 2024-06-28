@@ -2022,17 +2022,17 @@
         }]
     },
     "75": {
-        "display_name": "RopeWinch",
-        "code_name": "RopeWinch",
+        "display_name": "RopeMeasure",
+        "code_name": "RopeMeasure",
         "components": [{
-            "base_source": "RopeWinch",
+            "base_source": "RopeMeasure",
             "obj_source": "GAME_SKIN_DIR",
             "group": "BASE",
             "line_type_blocks": true,
             "line_type_components": {
-                "start": "RopeWinchConnector",
+                "start": "RopeMeasureStart",
                 "middle": "RopeWinchSection",
-                "end": "RopeWinchConnector"
+                "end": "RopeMeasureEnd"
             },
             "override_purge_materials": false,
             "update_materials": [],
