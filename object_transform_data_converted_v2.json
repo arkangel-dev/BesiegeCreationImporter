@@ -1992,5 +1992,432 @@
                 }
             }
         }]
+    },
+    "74": {
+        "display_name": "SqrBalloon",
+        "code_name": "SqrBalloon",
+        "components": [{
+            "base_source": "SqrBalloon",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0,
+                    "y": 0,
+                    "z": 180
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "75": {
+        "display_name": "RopeMeasure",
+        "code_name": "RopeMeasure",
+        "components": [{
+            "base_source": "RopeMeasure",
+            "obj_source": "GAME_SKIN_DIR",
+            "group": "BASE",
+            "line_type_blocks": true,
+            "line_type_components": {
+                "start": "RopeMeasureStart",
+                "middle": "RopeWinchSection",
+                "end": "RopeMeasureEnd"
+            },
+            "override_purge_materials": false,
+            "update_materials": [],
+            "part": "START",
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 180.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "77": {
+        "display_name": "MetalJaw",
+        "code_name": "MetalJaw",
+        "components": [{
+            "base_source": "MetalJaw",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "78": {
+        "display_name": "Sail",
+        "code_name": "Sail",
+        "components": [{
+            "base_source": "Sail",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.5
+                },
+                "rotation": {
+                    "x": 90.0,
+                    "y": 180.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1.5,
+                    "y": 1.5,
+                    "z": 1.5
+                }
+            }
+        }]
+    },
+    "79": {
+        "display_name": "Rudder",
+        "code_name": "Rudder",
+        "components": [{
+            "base_source": "Rudder",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.0
+                },
+                "rotation": {
+                    "x": 270,
+                    "y": 90,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "80": {
+        "display_name": "NauticalScrew",
+        "code_name": "NauticalScrew",
+        "components": [{
+            "base_source": "NauticalScrew",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.5
+                },
+                "rotation": {
+                    "x": 90,
+                    "y": 0,
+                    "z": 0
+                },
+                "scale": {
+                    "x": 0.2440983,
+                    "y": 0.2440983,
+                    "z": -0.2440983
+                }
+            }
+        }]
+    },
+    "81": {
+        "display_name": "Paddle",
+        "code_name": "Paddle",
+        "components": [{
+            "base_source": "Paddle",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.5
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "82": {
+        "display_name": "Buoyancy",
+        "code_name": "Buoyancy",
+        "components": [{
+            "base_source": "Buoyancy",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.5
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 0.5,
+                    "y": 0.5,
+                    "z": 0.5
+                }
+            }
+        }]
+    },
+    "83": {
+        "display_name": "BigBarrel",
+        "code_name": "BigBarrel",
+        "components": [{
+            "base_source": "BigBarrel",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.5
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 270.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "84": {
+        "display_name": "Harpoon",
+        "code_name": "Harpoon",
+        "components": [{
+            "base_source": "Harpoon",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 270,
+                    "y": 0.0,
+                    "z": 180
+                },
+                "scale": {
+                    "x": -1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "85": {
+        "display_name": "CornerWoodenBlock",
+        "code_name": "CornerWoodenBlock",
+        "components": [{
+            "base_source": "CornerWoodenBlock",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 1.5
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 270.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "89": {
+        "display_name": "DragBlock",
+        "code_name": "DragBlock",
+        "components": [{
+            "base_source": "DragBlock",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 180
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "87": {
+        "display_name": "BouncePad",
+        "code_name": "BouncePad",
+        "components": [{
+            "base_source": "BouncePad",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 180,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "88": {
+        "display_name": "Flywheel",
+        "code_name": "Flywheel",
+        "components": [{
+            "base_source": "Flywheel",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 180,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "86": {
+        "display_name": "SkateWheel",
+        "code_name": "SkateWheel",
+        "components": [{
+            "base_source": "SkateWheel",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": -90.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
     }
 }
