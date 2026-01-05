@@ -93,7 +93,8 @@ class MaterialList():
 		image_texture_node = nodes.new('ShaderNodeTexImage')
 		node_group_node = nodes.new('ShaderNodeGroup')
 		mix_node = nodes.new('ShaderNodeMixRGB')
-		hsv_node = nodes.new("ShaderNodeCombineHSV")
+		hsv_node = nodes.new("ShaderNodeCombineColor")
+		hsv_node.mode = 'HSV'
 
 		node_group_node.node_tree = node_group
 		node_group_node.inputs[2].default_value = 1 if glass else 0
