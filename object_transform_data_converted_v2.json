@@ -2337,10 +2337,10 @@
         }]
     },
     "87": {
-        "display_name": "BouncePad",
-        "code_name": "BouncePad",
+        "display_name": "BouncyPad",
+        "code_name": "BouncyPad",
         "components": [{
-            "base_source": "BouncePad",
+            "base_source": "BouncyPad",
             "group": "BASE",
             "line_type_blocks": false,
             "override_purge_materials": false,

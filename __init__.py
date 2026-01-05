@@ -1,8 +1,8 @@
 bl_info = {
 	'name': 'Import Besiege Machines',
 	'author': 'Sam Ramirez',
-	'version': (2, 0, 2),
-	'blender': (4, 1, 1),
+	'version': (2, 0, 5),
+	'blender': (5, 0, 1),
 	'location': 'View3D > Toolbar > Besiege',
 	'description': 'Imports Besiege Creation Files (.bsg) files',
 	'warning': 'This addon is still pretty experimental',
@@ -165,9 +165,6 @@ class ImportOperator(bpy.types.Operator):
 	bl_idname = 'mesh.importoperator'
 	bl_label = 'Import Creation'
 
-	def __init__(self):
-		pass
-
 	def execute(self, context):
 		try:
 
@@ -219,9 +216,6 @@ class PurgeMaterials(bpy.types.Operator):
 	bl_idname = 'materials.purgematerials'
 	bl_label = 'Purge Materials'
 
-	def __init__(self):
-		pass
-
 	def execute(self, context):
 		count = 0
 		for material in bpy.context.scene.bsgimp_purgeable_materials:
@@ -238,9 +232,6 @@ class SelectImportedObjects(bpy.types.Operator):
 	bl_idname = 'obj.selectimported'
 	bl_label = 'Select Imported Besiege Blocks'
 
-	def __init__(self):
-		pass
-
 	def execute(self, context):
 		for object_imp in bpy.context.scene.bsgimp_selectable_imports:
 			try:
@@ -253,9 +244,6 @@ class SaveGlobalConfiguration(bpy.types.Operator):
 	'''Save Global Configuration'''
 	bl_idname = 'mesh.importsaveglobalconfig'
 	bl_label = 'Simple Object Operator'
-
-	def __init__(self):
-		pass
 
 	def execute(self, context):
 		WriteGlobalConfig()
