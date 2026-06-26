@@ -136,7 +136,7 @@ class Reader():
 
 			# These are for the "Line type blocks". These blocks have two sets of co-ordinates. The start and
 			# end position as well as rotation.
-			if (block_id in ['7','9','45','75']):
+			if (block_id in ['7','9','45','75','96']):
 				print("Special block (string) (id {}) detected... ".format(current_block.block_id))
 				sp, ep, sr, er = ('0','0','0'), ('0','0','0'), ('0','0','0'), ('0','0','0')
 				for key in list(block.find("Data")):

@@ -2419,5 +2419,376 @@
                 }
             }
         }]
+    },
+    "90": {
+        "display_name": "Booster",
+        "code_name": "Booster",
+        "components": [{
+            "base_source": "Booster",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "91": {
+        "display_name": "Control Thruster",
+        "code_name": "SteeringThruster",
+        "components": [{
+            "base_source": "SteeringThruster",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "92": {
+        "display_name": "Small Fuel Barrel",
+        "code_name": "FuelBarrel",
+        "components": [{
+            "base_source": "FuelBarrel",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "93": {
+        "display_name": "Fuel Gauge",
+        "code_name": "FuelGauge",
+        "components": [{
+            "base_source": "FuelGauge",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "94": {
+        "display_name": "Grid Fin",
+        "code_name": "GridFin",
+        "components": [{
+            "base_source": "GridFin",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "95": {
+        "display_name": "Rocket Fin",
+        "code_name": "SteeringFin",
+        "components": [{
+            "base_source": "SteeringFin",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "96": {
+        "display_name": "Fuel Hose",
+        "code_name": "FuelLine",
+        "components": [{
+            "base_source": "FuelLine",
+            "obj_source": "GAME_SKIN_DIR",
+            "group": "BASE",
+            "line_type_blocks": true,
+            "line_type_components": {
+                "start": "RopeWinchConnector",
+                "middle": "RopeWinchSection",
+                "end": "RopeWinchConnector"
+            },
+            "override_purge_materials": false,
+            "update_materials": [],
+            "part": "START",
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 180.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "97": {
+        "display_name": "Parachute",
+        "code_name": "Parachute",
+        "components": [{
+            "base_source": "Parachute",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "98": {
+        "display_name": "Fuel Coupler",
+        "code_name": "FuelCoupler",
+        "components": [{
+            "base_source": "FuelCoupler",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "99": {
+        "display_name": "Large Fuel Barrel",
+        "code_name": "FuelBarrelBig",
+        "components": [{
+            "base_source": "FuelBarrelBig",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "100": {
+        "display_name": "Metal Wheel",
+        "code_name": "SpaceWheel",
+        "components": [{
+            "base_source": "SpaceWheel",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "101": {
+        "display_name": "Inertial Steering",
+        "code_name": "ReactionSteerBlock",
+        "components": [{
+            "base_source": "ReactionSteerBlock",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
+    },
+    "102": {
+        "display_name": "Blaster",
+        "code_name": "FuelCannon",
+        "components": [{
+            "base_source": "FuelCannon",
+            "group": "BASE",
+            "line_type_blocks": false,
+            "override_purge_materials": false,
+            "update_materials": [],
+            "offset": {
+                "position": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "rotation": {
+                    "x": 0.0,
+                    "y": 0.0,
+                    "z": 0.0
+                },
+                "scale": {
+                    "x": 1,
+                    "y": 1,
+                    "z": 1
+                }
+            }
+        }]
     }
 }
