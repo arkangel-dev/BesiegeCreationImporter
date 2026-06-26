@@ -130,7 +130,7 @@ class BlenderAPI():
 		# Catagorize all the blocks. We separate them by their draw type.
 		# Some objects will have to "drawn" differently than others.
 		for block in self.block_list:
-			if block.block_id in ['7','9','45','75']:
+			if block.block_id in ['7','9','45','75','96']:
 				line_draw.append(block)
 			elif block.block_id in ['73']:
 				surface_draw.append(block)
